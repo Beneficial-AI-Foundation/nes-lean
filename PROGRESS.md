@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M0
 - **Current branch:** `m0-scaffold`
-- **Next action:** M0 items 3–6 in parallel (Bits, Axioms, fetch-testdata, CI), then README, then PR ready.
+- **Next action:** M0 README item; check CI run on PR #1; then mark PR #1 ready and start M1.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -45,10 +45,10 @@ a milestone is otherwise a suggestion. "PR ready" is always last.
 Parallel tracks: after items 1–2 land (they define the Lake layout), items 3–7 are all independent.
 - [x] `lake init` layout: `lakefile.toml` with lib `Nes` (`precompileModules = true`), exe `nes` (`Main.lean`) built with `moreLeancArgs = ["-O3", "-DNDEBUG"]`, test driver `Test`; `lean-toolchain` = latest stable (v4.36.0; fall back to installed v4.35.0 if the download fails)
 - [x] Batteries dependency pinned to the tag matching the toolchain; `lake update`; `lake build` green
-- [ ] `Nes/Prelude/Bits.lean`: first `UInt8`/`UInt16` ↔ `BitVec`/`Nat` bridging lemmas, one `bv_decide` and one `omega` smoke proof
-- [ ] `Test/Axioms.lean`: theorem-name registry + `#print axioms` check that fails on `sorryAx` / `Lean.ofReduceBool`; wired into `lake test`
-- [ ] `scripts/fetch-testdata.sh`: SingleStepTests `nes6502`, `nestest.nes` + `nestest.log`, blargg suites; pinned commits; `testdata/` gitignored
-- [ ] GitHub Actions: build, test, axiom check, `grep -rn sorry Nes/` must be empty; `.lake` cache
+- [x] `Nes/Prelude/Bits.lean`: first `UInt8`/`UInt16` ↔ `BitVec`/`Nat` bridging lemmas, one `bv_decide` and one `omega` smoke proof
+- [x] `Test/Axioms.lean`: theorem-name registry + `#print axioms` check that fails on `sorryAx` / `Lean.ofReduceBool`; wired into `lake test`
+- [x] `scripts/fetch-testdata.sh`: SingleStepTests `nes6502`, `nestest.nes` + `nestest.log`, blargg suites; pinned commits; `testdata/` gitignored
+- [x] GitHub Actions: build, test, axiom check, `grep -rn sorry Nes/` must be empty; `.lake` cache
 - [ ] README: build/run/test instructions; link PLAN.md and PROGRESS.md
 - [ ] CI green on the draft PR → mark ready. Create `m1-cpu-isa` from here.
 
@@ -147,12 +147,19 @@ the docs, test-harness surprises.
 - 2026-11-17 [lean] `v4.35.0` is installed locally; `elan` resolves `stable` to `v4.36.0` and will download it on first use.
 - 2026-11-17 [lean] v4.36.0 downloaded fine via `elan toolchain install`; Batteries has a matching `v4.36.0` tag. Lake `testDriver = "Test"` points at the `Test` lean_exe (root `Test.Main`).
 - 2026-11-17 [tests] The `nes6502` SingleStepTests assume a flat 64 KiB RAM with no NES bus; feed the CPU models a plain memory in the Harte harness.
+- 2026-11-17 [lean] Lake only builds modules owned by some `lean_lib`; an exe importing `Test.Axioms` fails with "object file … does not exist" → added lib `TestSuite` (`globs = ["Test.+"]`).
+- 2026-11-17 [lean] v4.36: `bv_decide` no longer uses `Lean.ofReduceBool` (constant gone); it adds a per-theorem axiom `<thm>._native.bv_decide.ax_*`. `native_decide` likewise adds `<thm>._native.native_decide.ax_*`. Axiom check allowlists only the bv_decide ones.
+- 2026-11-17 [lean] Inside `namespace Nes`, `UInt16.foo` resolves to `Nes.UInt16.foo`; core lemmas need `_root_.` (e.g. `_root_.UInt8.toNat_add`).
+- 2026-11-17 [lean] `simp [defs]` may close goals and leave `bv_decide` with "No goals"; use `simp only [UInt*.toBitVec_*]` then `bv_decide`. `bv_decide` handles `UInt8` goals (incl. `.toBitVec.msb`) directly.
+- 2026-11-17 [testdata] ProcessorTests `nes6502` = 256 JSON files, ~1.2 GB on disk (~54 s); `fetch-testdata.sh --cpu-only` skips it for fast CI.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
 - 2026-11-17 Phase 9 (performance) folded into M4; M0 added as its own PR so CI exists before M1.
+- 2026-11-17 `bv_decide` (named in PLAN.md §4 as the bit-level proof tool) is accepted even though in v4.36 it trusts compiled evaluation via a per-theorem `_native.bv_decide` axiom; `native_decide` stays banned. The trust is confined to `allowedNativeTactics` in `Test/Axioms.lean`.
 - 2026-11-17 The product is the native binary from Lean's C backend with `-O3`; hot-path rules in PLAN.md §4 apply from M1 (PLAN.md §10 decision 6).
 
 ## Tick log (keep the last 20 lines only)
 _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M0  started milestone (draft PR #1); Lake layout on v4.36.0 + Batteries v4.36.0, build/test/exe green
+- 2026-11-17  M0  4 agents: Bits lemmas, axiom check (lib TestSuite), fetch-testdata (pinned), CI workflow; build/test green
