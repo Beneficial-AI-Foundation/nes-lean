@@ -7,8 +7,8 @@ Keep this file small: trim the tick log, never paste build output here.
 ## Resume here
 
 - **Current milestone:** M0
-- **Current branch:** _(none yet — milestone start: create `m0-scaffold` from `main`, bootstrap commit, draft PR)_
-- **Next action:** M0 milestone start, then M0 item 1 — `lake init`, toolchain pin, Lake targets.
+- **Current branch:** `m0-scaffold`
+- **Next action:** M0 item 1 — `lake init`, toolchain pin, Lake targets.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -21,7 +21,7 @@ when the milestone's definition of done holds.
 
 | M | Title | Plan phases | Branch | Base | PR | Status |
 |---|---|---|---|---|---|---|
-| M0 | Scaffold | 0 | `m0-scaffold` | `main` | — | not started |
+| M0 | Scaffold | 0 | `m0-scaffold` | `main` | — | in progress |
 | M1 | nestest green | 1 | `m1-cpu-isa` | `m0-scaffold` | — | not started |
 | M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | — | not started |
 | M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | — | not started |
