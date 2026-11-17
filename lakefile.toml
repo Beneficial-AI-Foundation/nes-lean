@@ -20,3 +20,9 @@ moreLeancArgs = ["-O3", "-DNDEBUG"]
 [[lean_exe]]
 name = "Test"
 root = "Test.Main"
+
+# Test-suite modules (`Test.*`); the `Test` exe imports them. Lake only builds a module
+# that some lean_lib owns, so the suites live in this library.
+[[lean_lib]]
+name = "TestSuite"
+globs = ["Test.+"]
