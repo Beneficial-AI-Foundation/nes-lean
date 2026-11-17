@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M2
 - **Current branch:** `m2-cpu-micro`
-- **Next action:** M2: T-CPU-7 mid-instruction NMI latency (attempt 3; defer with blocker if it fails — not a headline theorem); then PR M2 ready.
+- **Next action:** M2 close — CI green on the last commit, definition of done, final PR body, `gh pr ready 3`; then start M3 (`m3-ppu` from `m2-cpu-micro`).
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -80,7 +80,7 @@ Parallel tracks: {Micro → Harte trace runner} ∥ {Interrupts}; then T-REF-1 p
 - [x] `Cpu/Proofs/Stack.lean` T-CPU-6
 - [x] `Cpu/Proofs/Interrupts.lean` T-CPU-7 (IRQ masked, entry/BRK/B-bit/hijack over `Core`, NMI latch, 8-cycle boundary bound)
 - [x] T-CPU-7 NMI latency end-to-end over `Core` (≤ `maxInstrCycles + 7` cycles from edge): relate `Core.runCycles` to `MicroState.runInstr`; show every instruction polls before its boundary — closed in attempt 2 for an edge sampled in the fetch cycle / already latched (`T_CPU_7_nmi_latency`: ≤ 8 + 7 = 15 cycles)
-- [ ] T-CPU-7 NMI latency for an edge arriving mid-instruction (attempt 3 of 3): bound = rest of current instruction + 15; worst case taken-branch-no-cross edge in cycle 2 → 17 cycles from the edge, so the plan's literal `maxInstrCycles + 7` from the edge is false — prove the corrected bound (relax `LatInv.pend` to "pending by the poll"; IRQ-sequence-then-hijack case via `T_CPU_7_entry`)
+- [x] T-CPU-7 NMI latency for an edge arriving mid-instruction — closed in attempt 3: `T_CPU_7_nmi_latency_edge` (edge in cycle j of an instruction or BRK: ≤ (8 − (j−1)) + 15 cycles), `_edge_irq` (edge in an IRQ sequence), `_mid` (invariant form); edge inside an NMI sequence deferred
 - [x] T-CPU-7 hijack with an NMI edge in BRK cycles 2–4 and NMI consumed at the core layer (needs a per-cycle line-schedule runner); IRQ-masked core theorem derived from the opcode instead of assumed I=1 (closed in attempt 2: `T_CPU_7_hijack_mid/late`, `T_CPU_7_irq_masked_opcode`, line-schedule runner `runSched`)
 - [x] blargg `cpu_*`, `instr_test-v5`, `cpu_interrupts_v2`, `cpu_dummy_reads/writes` green (a minimal NROM bus may be pulled forward from Phase 3) — 28/28 on test-only NROM/MMC1/CNROM bus + crude PPU/APU timing (`Test/Blargg.lean`); re-validate on the real PPU/APU in M3/M5
 - [ ] PR M2 ready. Create `m3-ppu`.
@@ -144,6 +144,7 @@ _(fill in: ISA instr/s at M1; frames/s at M4 and after the perf pass)_
 
 ## Deferred theorems
 _(theorem id — why — what would unblock it)_
+- T-CPU-7 (sub-case): NMI edge during cycles 1–4 of an NMI sequence — the interrupt model absorbs it (documented gap in `Cpu/Interrupts.lean`), so no latency bound holds there as modelled. Unblock: model the per-cycle NMI edge detector during sequences to match hardware, then extend `lat_dispatch`. Also: latency bounds are not tight (branch case is 17, proved bound 22) and assume no JAM fetched.
 
 ## Gotchas (append-only, newest last)
 Format: `YYYY-MM-DD [area] symptom → fix/lesson`. Record anything that cost more than one
@@ -189,6 +190,7 @@ the docs, test-harness surprises.
 - 2026-11-17 [proofs] `State.flags_set*` lemmas use `bv_decide` (native axiom); to keep a theorem on standard axioms re-prove the flag fact by `decide` over the 256 status bytes. `let` in theorem statements caused whnf timeouts when used with `exact` — `dsimp only` goal and hypothesis first.
 - 2026-11-17 [cpu] NMI latency from the *edge* is not `maxInstrCycles + 7`: a taken branch without page cross polls only in cycle 1, so an edge in its cycle 2 waits for the next instruction (2 + 8 + 7 = 17 cycles). Bound from the instruction start (edge in fetch cycle) is 15 and is proved.
 - 2026-11-17 [lean] `rfl`/`apply` on goals containing `uops ms.op` hits max recursion — `dsimp only` then `refine` with explicit args, or `generalize`.
+- 2026-11-17 [lean] Don't wrap a line schedule like `hjNmiFrom j (fun _ => irq)` in an `abbrev`: checking `runSched 7 (abbrev…)` against `runSched 7 (hjNmiFrom…)` unfolds `runSched` and hits whnf heartbeat limits — write it out.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -217,3 +219,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M2  T-REF-1 CLOSED for all 256 opcodes (15 classes); proof exposed and fixed an Isa JSR bug; 90 theorems in registry
 - 2026-11-17  M2  T-CPU-7 (11 thms; latency + mid-BRK hijack open); blargg CPU suites 28/28 in lake test; full sweeps green after JSR fix; 101 theorems
 - 2026-11-17  M2  T-CPU-7 attempt 2: mid-BRK hijack, opcode-derived IRQ masking, NMI latency from instruction start (15 cycles); 109 theorems; mid-instruction-edge latency left for attempt 3
+- 2026-11-17  M2  T-CPU-7 attempt 3: mid-instruction NMI latency (≤ rest + 15) incl. BRK/IRQ sequences; NMI-in-NMI-sequence sub-case deferred; 112 theorems; all M2 work items ticked
