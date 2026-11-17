@@ -124,7 +124,18 @@ def registry : List Name :=
   , `Nes.Cpu.Proofs.Refinement.T_REF_1_jmpInd
   , `Nes.Cpu.Proofs.Refinement.T_REF_1_push
   , `Nes.Cpu.Proofs.Refinement.T_REF_1_pull
-  , `Nes.Cpu.Proofs.Refinement.T_REF_1_jam ]
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_jam
+  , `Nes.Cpu.Proofs.T_CPU_7_irq_masked
+  , `Nes.Cpu.Proofs.T_CPU_7_hijack_decision
+  , `Nes.Cpu.Proofs.T_CPU_7_entry
+  , `Nes.Cpu.Proofs.T_CPU_7_brk
+  , `Nes.Cpu.Proofs.T_CPU_7_entry_irq
+  , `Nes.Cpu.Proofs.T_CPU_7_B_only_pushed
+  , `Nes.Cpu.Proofs.T_CPU_7_hijack
+  , `Nes.Cpu.Proofs.T_CPU_7_nmi_latch
+  , `Nes.Cpu.Proofs.T_CPU_7_boundary_bound
+  , `Nes.Cpu.Proofs.T_CPU_7_irq_masked_core
+  , `Nes.Cpu.Proofs.T_CPU_7_irq_masked_run ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
