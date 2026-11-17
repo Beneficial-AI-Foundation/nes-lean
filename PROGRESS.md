@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M2
 - **Current branch:** `m2-cpu-micro`
-- **Next action:** M2 batch: `Cpu/Micro.lean` ∥ `Cpu/Interrupts.lean`; then trace runner, T-REF-1 lemma groups, T-CPU-6/7, blargg CPU suites.
+- **Next action:** M2 batch: T-REF-1 prefix lemmas ∥ T-REF-1 suffix lemmas ∥ T-CPU-6 (Stack) ∥ wire Interrupts into Micro.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -70,9 +70,10 @@ Parallel tracks: {Types → Alu → Alu proofs} ∥ {Decode → Decode proofs} �
 
 ### M2 — Cycle-exact and proved (Phase 2)
 Parallel tracks: {Micro → Harte trace runner} ∥ {Interrupts}; then T-REF-1 prefix lemmas ∥ suffix lemmas (one subagent per lemma group, disjoint files `Proofs/Refinement/Prefix*.lean`, `Suffix*.lean`) ∥ T-CPU-6 ∥ T-CPU-7 ∥ blargg CPU suites; then table discharge.
-- [ ] `Cpu/Micro.lean`: `MicroOp` inductive, mode-prefix and instruction-suffix programs, one-`BusOp`-per-cycle interpreter, instruction-boundary detection
-- [ ] Harte per-cycle trace runner (addr, value, r/w incl. dummy reads and RMW double write) → 256/256
-- [ ] `Cpu/Interrupts.lean`: NMI edge, IRQ level + `I`, RESET, polling point, CLI/SEI/PLP delay, BRK/NMI hijack
+- [x] `Cpu/Micro.lean`: `MicroOp` inductive, mode-prefix and instruction-suffix programs, one-`BusOp`-per-cycle interpreter, instruction-boundary detection
+- [x] Harte per-cycle trace runner (addr, value, r/w incl. dummy reads and RMW double write) → 256/256
+- [x] `Cpu/Interrupts.lean`: NMI edge, IRQ level + `I`, RESET, polling point, CLI/SEI/PLP delay, BRK/NMI hijack
+- [ ] Wire `Interrupts` into `Micro`: `sampleCycle` every cycle (poll = `isPollCycle`/`branchPollCycle`, I via `pollIFlag`), `atBoundary` → `ack` + `requestInterrupt`, `vectorFetch` before cycle 5's sample (hijack); needed by T-CPU-7 and the blargg interrupt suites
 - [ ] `Cpu/Proofs/Refinement.lean` T-REF-1: 13 addressing-prefix lemmas
 - [ ] T-REF-1: ~20 instruction-suffix lemmas
 - [ ] T-REF-1: table discharge; `#print axioms` clean
@@ -168,6 +169,9 @@ the docs, test-harness surprises.
 - 2026-11-17 [proofs] Kernel `decide` on a concrete 64 KiB `Vector` is hopeless (Array ops reduce via `List`: one LDA #imm case 9 s, STA abs 30 s). T-CPU-8 instead proves each case for *all* memories agreeing on the listed cells: unfold `step`, rewrite reads with the hypotheses + read-after-write lemma, per-case `decode 0xNN = … := rfl`, `decide` the residue (~0.08 s/theorem).
 - 2026-11-17 [ci] The CI `grep -rnw native_decide Nes/` also matches comments and docstrings — never write the word under `Nes/`, even in prose.
 - 2026-11-17 [lean] `(256 : UInt16).toNat` doesn't reduce for omega; add `show (256 : UInt16).toNat = 256 from rfl`.
+- 2026-11-17 [cpu] Micro bus-trace facts from Harte: JAM reads PC, PC+1, PC+1 then restores PC; taken branches dummy-read the next instruction, then (page cross) target-low with the old high byte; unstable stores dummy-read with the un-indexed base high byte. Halted CPU reads `$FFFF` each cycle (our choice; untested by Harte).
+- 2026-11-17 [tests] Full native `Test --full` (ISA sweep + per-cycle Micro sweep, 2 × 2.56 M cases) takes ~6m20.
+- 2026-11-17 [cpu] Interrupts: call `ack` when taking an interrupt (else the poll latch refires); `vectorFetch` must run before cycle 5's `sampleCycle` (hijack window); `State.init` already has SP=$FD — power-on RESET from it would give $FA.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -189,3 +193,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M1  T-CPU-5 (11 thms), T-CPU-8 (31 Harte cases as theorems), bench 35 M instr/s; 65 theorems in registry; all M1 items but PR-ready ticked
 - 2026-11-17  M1  CI green on 7897ff6; definition of done holds; PR #2 marked ready
 - 2026-11-17  M2  started milestone (draft PR #3, base `m1-cpu-isa`)
+- 2026-11-17  M2  Interrupts logic; Micro (41 uops) passes 2,560,000/2,560,000 Harte cases incl. exact bus traces and Isa agreement; trace runner in lake test
