@@ -20,7 +20,7 @@ machine integer (`UInt8`/`UInt16`, unboxed scalars in compiled code) rather than
 
 Which item fills which fields: registers (`Nes.Ppu.Registers`): `ctrl mask status oamAddr v t
 x w ioLatch oam nmiOut`; the `$2007` read buffer: `readBuffer`; timing: `dot scanline frameOdd
-status nmiOut suppressVbl frameReady emphasis`; background pipeline: `bg*`; sprite pipeline:
+status nmiOut suppressVbl frameReady emphasis renderLatch`; background pipeline: `bg*`; sprite pipeline:
 `secOam eval* spr*`; mapper hook: `a12`.
 
 ## Spec
@@ -116,6 +116,10 @@ structure State where
   emphasis : UInt8
   /-- A complete frame is in `frame` (set at vblank start, cleared by the frontend). -/
   frameReady : Bool
+  /-- `rendering` sampled at the end of pre-render dot 338 (by `Nes.Ppu.Step.dot`): the
+  odd-frame skip at dot 339 decides from it, so a `$2001` write after dot 338 no longer
+  affects this frame's skip (`ppu_vbl_nmi/10-even_odd_timing`, exact to the dot). -/
+  renderLatch : Bool
 
 namespace State
 
@@ -129,7 +133,8 @@ def init : State :=
     sprPatLo := zeroBytes 8, sprPatHi := zeroBytes 8, sprAttr := zeroBytes 8, sprX := zeroBytes 8,
     spr0Next := false, spr0Line := false, dot := 0, scanline := 0, frameOdd := false,
     nmiOut := false, suppressVbl := false, a12 := false,
-    frame := zeroBytes (frameWidth * frameHeight), emphasis := 0, frameReady := false }
+    frame := zeroBytes (frameWidth * frameHeight), emphasis := 0, frameReady := false,
+    renderLatch := false }
 
 instance : Inhabited State := ⟨init⟩
 

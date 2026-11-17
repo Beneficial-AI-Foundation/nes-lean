@@ -10,7 +10,8 @@ Positions are linearised as `lin s = scanline * 341 + dot` (0 … 89341); `Valid
 
 * **T-PPU-1 (frame).** From `(0, 0)` on an even frame or with rendering disabled, 89342 ticks
   return to `(0, 0)` with the frame parity flipped (`T_PPU_1_frame_dots`).
-* **T-PPU-1 (odd frame).** From `(0, 0)` on an odd frame with rendering enabled, 89341 ticks
+* **T-PPU-1 (odd frame).** From `(0, 0)` on an odd frame with rendering enabled (as latched
+  in `renderLatch`, which `tick` keeps; `Nes.Ppu.Step` samples it at pre-render dot 338), 89341 ticks
   return to `(0, 0)` with the parity flipped (`T_PPU_1_odd_frame`).
 * **T-PPU-1 (vblank).** The tick from `(241, 0)` reaches `(241, 1)` and, unless suppressed by a
   `$2002` read, sets the vblank flag (`T_PPU_1_vblank_set`); the tick from `(261, 0)` reaches
@@ -60,15 +61,15 @@ theorem advance_regs (s : State) :
   all_goals exact ⟨rfl, rfl, rfl, rfl, rfl⟩
 
 theorem advance_step (s : State) (hv : Valid s) (h1 : lin s + 1 < 89342)
-    (h2 : ¬ (lin s = 89340 ∧ s.frameOdd = true ∧ s.rendering = true)) :
+    (h2 : ¬ (lin s = 89340 ∧ s.frameOdd = true ∧ s.renderLatch = true)) :
     lin (advance s) = lin s + 1 ∧ Valid (advance s) ∧ (advance s).frameOdd = s.frameOdd := by
   unfold Valid lin at *
   unfold advance
   split
   · rename_i h
-    simp [← UInt16.toNat_inj, State.rendering] at h
-    simp [State.rendering] at h2
-    exact absurd (h2 (by omega) h.1.2) h.2
+    simp [← UInt16.toNat_inj] at h
+    simp at h2
+    simp [h2 (by omega) h.1.2] at h
   · split
     · rename_i _ h
       split
@@ -93,7 +94,7 @@ theorem advance_wrap (s : State) (hv : Valid s) (h : lin s = 89341) :
   simp [hd, hl]
 
 theorem advance_skip (s : State) (hv : Valid s) (h : lin s = 89340) (ho : s.frameOdd = true)
-    (hr : s.rendering = true) :
+    (hr : s.renderLatch = true) :
     lin (advance s) = 0 ∧ Valid (advance s) ∧ (advance s).frameOdd = !s.frameOdd := by
   unfold Valid lin at *
   have hd : s.dot = 339 := by rw [← UInt16.toNat_inj]; simp; omega
@@ -108,6 +109,11 @@ theorem tick_mask (s : State) : (tick s).mask = s.mask ∧ (tick s).ctrl = s.ctr
     (advance_regs s).2.2.2.2]
   exact ⟨rfl, rfl⟩
 
+/-- `tick` keeps the latched rendering-enable (`Nes.Ppu.Step` updates it). -/
+theorem tick_renderLatch (s : State) : (tick s).renderLatch = s.renderLatch := by
+  unfold tick advance dotEvents; repeat' split
+  all_goals rfl
+
 theorem lin_tick (s : State) : lin (tick s) = lin (advance s) := by
   unfold lin tick; rw [(dotEvents_pos _).1, (dotEvents_pos _).2.1]
 
@@ -118,7 +124,7 @@ theorem frameOdd_tick (s : State) : (tick s).frameOdd = (advance s).frameOdd := 
   unfold tick; rw [(dotEvents_pos _).2.2.1]
 
 theorem tick_step (s : State) (hv : Valid s) (h1 : lin s + 1 < 89342)
-    (h2 : ¬ (lin s = 89340 ∧ s.frameOdd = true ∧ s.rendering = true)) :
+    (h2 : ¬ (lin s = 89340 ∧ s.frameOdd = true ∧ s.renderLatch = true)) :
     lin (tick s) = lin s + 1 ∧ Valid (tick s) ∧ (tick s).frameOdd = s.frameOdd := by
   rw [lin_tick, valid_tick, frameOdd_tick]; exact advance_step s hv h1 h2
 
@@ -138,9 +144,14 @@ theorem ticks_rendering (k : Nat) (s : State) :
   | succ k ih =>
     rw [ticks_succ, (ih _).1, (ih _).2]; exact tick_mask s
 
+theorem ticks_renderLatch (k : Nat) (s : State) : (ticks k s).renderLatch = s.renderLatch := by
+  induction k generalizing s with
+  | zero => rfl
+  | succ k ih => rw [ticks_succ, ih, tick_renderLatch]
+
 /-- `k` ticks that do not cross the frame end (nor the odd-frame skip point) advance `lin` by `k`. -/
 theorem ticks_lin (k : Nat) (s : State) (hv : Valid s) (h1 : lin s + k < 89342)
-    (h2 : lin s + k ≤ 89340 ∨ ¬ (s.frameOdd = true ∧ s.rendering = true)) :
+    (h2 : lin s + k ≤ 89340 ∨ ¬ (s.frameOdd = true ∧ s.renderLatch = true)) :
     lin (ticks k s) = lin s + k ∧ Valid (ticks k s) ∧ (ticks k s).frameOdd = s.frameOdd := by
   induction k generalizing s with
   | zero => exact ⟨(Nat.add_zero _).symm, hv, rfl⟩
@@ -149,8 +160,7 @@ theorem ticks_lin (k : Nat) (s : State) (hv : Valid s) (h1 : lin s + k < 89342)
       intro ⟨hl, ho, hr⟩; rcases h2 with h2 | h2
       · omega
       · exact h2 ⟨ho, hr⟩)
-    have hm : (tick s).rendering = s.rendering := by
-      unfold State.rendering; rw [(tick_mask s).1]
+    have hm : (tick s).renderLatch = s.renderLatch := tick_renderLatch s
     have := ih (tick s) hs.2.1 (by omega) (by
       rcases h2 with h2 | h2
       · left; omega
@@ -166,12 +176,12 @@ theorem pos_of_lin0 (s : State) (hv : Valid s) (h : lin s = 0) : s.dot = 0 ∧ s
 
 /-- T-PPU-1: a frame from `(0, 0)` on an even frame (or with rendering off) is 89342 dots. -/
 theorem T_PPU_1_frame_dots (s : State) (hd : s.dot = 0) (hl : s.scanline = 0)
-    (h : s.frameOdd = false ∨ s.rendering = false) :
+    (h : s.frameOdd = false ∨ s.renderLatch = false) :
     (ticks 89342 s).dot = 0 ∧ (ticks 89342 s).scanline = 0 ∧
       (ticks 89342 s).frameOdd = !s.frameOdd := by
   have hv : Valid s := by unfold Valid; simp [hd, hl]
   have h0 : lin s = 0 := by unfold lin; simp [hd, hl]
-  have hns : ¬ (s.frameOdd = true ∧ s.rendering = true) := by
+  have hns : ¬ (s.frameOdd = true ∧ s.renderLatch = true) := by
     rcases h with h | h <;> simp [h]
   have r := ticks_lin 89341 s hv (by omega) (Or.inr hns)
   rw [show (89342 : Nat) = 89341 + 1 from rfl, ticks_add, ticks_succ, ticks]
@@ -182,14 +192,14 @@ theorem T_PPU_1_frame_dots (s : State) (hd : s.dot = 0) (hl : s.scanline = 0)
 
 /-- T-PPU-1: an odd frame with rendering enabled is 89341 dots (the idle dot is skipped). -/
 theorem T_PPU_1_odd_frame (s : State) (hd : s.dot = 0) (hl : s.scanline = 0)
-    (ho : s.frameOdd = true) (hr : s.rendering = true) :
+    (ho : s.frameOdd = true) (hr : s.renderLatch = true) :
     (ticks 89341 s).dot = 0 ∧ (ticks 89341 s).scanline = 0 ∧ (ticks 89341 s).frameOdd = false := by
   have hv : Valid s := by unfold Valid; simp [hd, hl]
   have h0 : lin s = 0 := by unfold lin; simp [hd, hl]
   have r := ticks_lin 89340 s hv (by omega) (Or.inl (by omega))
   rw [show (89341 : Nat) = 89340 + 1 from rfl, ticks_add, ticks_succ, ticks]
-  have hr' : (ticks 89340 s).rendering = true := by
-    unfold State.rendering; rw [(ticks_rendering _ _).1]; exact hr
+  have hr' : (ticks 89340 s).renderLatch = true := by
+    rw [ticks_renderLatch]; exact hr
   have w := advance_skip _ r.2.1 (by omega) (by rw [r.2.2, ho]) hr'
   rw [← lin_tick, ← valid_tick, ← frameOdd_tick] at w
   obtain ⟨a, b⟩ := pos_of_lin0 _ w.2.1 w.1
