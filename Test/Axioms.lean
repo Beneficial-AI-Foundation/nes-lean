@@ -174,7 +174,17 @@ def registry : List Name :=
   , `Nes.Bus.Proofs.T_BUS_1_ciram_horizontal
   , `Nes.Bus.Proofs.T_BUS_1_ciram_vertical
   , `Nes.Bus.Proofs.T_BUS_1_ciram_singleLow
-  , `Nes.Bus.Proofs.T_BUS_1_ciram_singleHigh ]
+  , `Nes.Bus.Proofs.T_BUS_1_ciram_singleHigh
+  , `Nes.Cart.parse_serialize
+  , `Nes.Cart.parse_of_bad_magic
+  , `Nes.Cart.MapperState.prgOffset_lt
+  , `Nes.Cart.MapperState.chrOffset_lt
+  , `Nes.Cart.Nrom.prgOffset_16k_mirror
+  , `Nes.Cart.Cart.cpuWrite_rom
+  , `Nes.Cart.Cart.ppuWrite_rom
+  , `Nes.Cart.Cart.run_rom
+  , `Nes.Cart.Cart.run_cpuRead_prg_nrom
+  , `Nes.Cart.Cart.run_ppuRead_chr_nrom ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
