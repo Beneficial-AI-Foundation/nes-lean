@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M0
 - **Current branch:** `m0-scaffold`
-- **Next action:** M0 README item; check CI run on PR #1; then mark PR #1 ready and start M1.
+- **Next action:** wait for CI green on PR #1, then mark it ready (M0 close) and start M1 (`m1-cpu-isa`).
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -49,7 +49,7 @@ Parallel tracks: after items 1–2 land (they define the Lake layout), items 3�
 - [x] `Test/Axioms.lean`: theorem-name registry + `#print axioms` check that fails on `sorryAx` / `Lean.ofReduceBool`; wired into `lake test`
 - [x] `scripts/fetch-testdata.sh`: SingleStepTests `nes6502`, `nestest.nes` + `nestest.log`, blargg suites; pinned commits; `testdata/` gitignored
 - [x] GitHub Actions: build, test, axiom check, `grep -rn sorry Nes/` must be empty; `.lake` cache
-- [ ] README: build/run/test instructions; link PLAN.md and PROGRESS.md
+- [x] README: build/run/test instructions; link PLAN.md and PROGRESS.md
 - [ ] CI green on the draft PR → mark ready. Create `m1-cpu-isa` from here.
 
 ### M1 — nestest green (Phase 1)
@@ -163,3 +163,4 @@ the docs, test-harness surprises.
 _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M0  started milestone (draft PR #1); Lake layout on v4.36.0 + Batteries v4.36.0, build/test/exe green
 - 2026-11-17  M0  4 agents: Bits lemmas, axiom check (lib TestSuite), fetch-testdata (pinned), CI workflow; build/test green
+- 2026-11-17  M0  README written; first CI run on push green (37 s)
