@@ -18,7 +18,10 @@ Sources (NESdev wiki, "PPU frame timing", "PPU rendering", "NMI"):
 * Vblank flag set at dot 1 of line 241; vblank, sprite-0 hit and sprite overflow cleared at
   dot 1 of the pre-render line 261.
 * With rendering enabled, odd frames are one dot shorter: the PPU jumps from (261, 339)
-  straight to (0, 0) (the idle dot is skipped). Rendering is sampled at that dot.
+  straight to (0, 0) (the idle dot is skipped). The rendering enable is the one sampled at
+  the end of dot 338 (`renderLatch`, maintained by `Nes.Ppu.Step`): blargg
+  `ppu_vbl_nmi/10-even_odd_timing` passes exactly with that sample point (a `$2001` write
+  between dots 338 and 339 must not change the skip; sampling at 337 or 339 fails).
 * NMI output = `ctrl.7 ∧ vblank` (`nmiOut`); the CPU detects its rising edge. Hence
   enabling NMI during vblank raises the line again (retrigger; `writeCtrl`), and clearing
   vblank by a `$2002` read drops it.
@@ -38,7 +41,7 @@ truth for that alignment.
 * Constants: `dotsPerLine = 341`, `linesPerFrame = 262`, `vblankLine = 241`,
   `preRenderLine = 261`, `dotsPerFrame = 89342`.
 * `advance s` (only `dot scanline frameOdd` change): if `(scanline, dot) = (261, 339)`,
-  `frameOdd` and rendering is enabled → `(0, 0)` and `frameOdd` flips; else if `dot = 340`:
+  `frameOdd` and `renderLatch` → `(0, 0)` and `frameOdd` flips; else if `dot = 340`:
   line 261 → `(0, 0)` with `frameOdd` flipped, other lines → `(scanline + 1, 0)`; else
   `dot + 1`.
 * `dotEvents s` (only `status nmiOut suppressVbl frameReady emphasis` change): at `(241, 1)`:
@@ -70,7 +73,7 @@ namespace State
 
 /-- Advance `(scanline, dot, frameOdd)` by one PPU clock, with the odd-frame skip. -/
 @[inline] def advance (s : State) : State :=
-  if s.dot == 339 && s.scanline == 261 && s.frameOdd && s.rendering then
+  if s.dot == 339 && s.scanline == 261 && s.frameOdd && s.renderLatch then
     { s with dot := 0, scanline := 0, frameOdd := !s.frameOdd }
   else if s.dot == 340 then
     if s.scanline == 261 then { s with dot := 0, scanline := 0, frameOdd := !s.frameOdd }
