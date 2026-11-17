@@ -274,7 +274,13 @@ def registry : List Name :=
   , `Nes.Apu.Proofs.T_APU_2_tndTable_err
   , `Nes.System.Nes.runFrameAudio_fst
   , `Nes.Ppu.Proofs.T_PPU_7_settled
-  , `Nes.Ppu.Proofs.T_PPU_7_back_to_back ]
+  , `Nes.Ppu.Proofs.T_PPU_7_back_to_back
+  , `Nes.Ppu.Proofs.T_PPU_4_hit_iff
+  , `Nes.Ppu.Proofs.T_PPU_4_dot_hit_iff
+  , `Nes.Ppu.Proofs.T_PPU_4_never_outside
+  , `Nes.Ppu.Proofs.T_PPU_4_clear
+  , `Nes.Ppu.Proofs.T_PPU_4_priority_independent
+  , `Nes.Ppu.Proofs.T_PPU_4_visible_at ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

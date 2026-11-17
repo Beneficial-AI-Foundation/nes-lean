@@ -72,3 +72,4 @@ import Nes.Apu.Proofs.Mixer
 import Nes.Frontend.Wav
 import Nes.Apu.Apu
 import Nes.Ppu.Declarative
+import Nes.Ppu.Proofs.Sprite0
