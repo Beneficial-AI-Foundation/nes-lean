@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M2
 - **Current branch:** `m2-cpu-micro`
-- **Next action:** M2 batch: T-REF-1 prefix lemmas ∥ T-REF-1 suffix lemmas ∥ T-CPU-6 (Stack) ∥ wire Interrupts into Micro.
+- **Next action:** M2 batch: T-REF-1 suffix classes split by file (`Refinement/SuffixRmw.lean` ∥ `SuffixBranch.lean` ∥ `SuffixControl.lean` (jsr rts rti brk jmpAbs jmpInd) ∥ `SuffixStack.lean` (push pull jam)); then table discharge; T-CPU-7 and blargg after.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -73,11 +73,11 @@ Parallel tracks: {Micro → Harte trace runner} ∥ {Interrupts}; then T-REF-1 p
 - [x] `Cpu/Micro.lean`: `MicroOp` inductive, mode-prefix and instruction-suffix programs, one-`BusOp`-per-cycle interpreter, instruction-boundary detection
 - [x] Harte per-cycle trace runner (addr, value, r/w incl. dummy reads and RMW double write) → 256/256
 - [x] `Cpu/Interrupts.lean`: NMI edge, IRQ level + `I`, RESET, polling point, CLI/SEI/PLP delay, BRK/NMI hijack
-- [ ] Wire `Interrupts` into `Micro`: `sampleCycle` every cycle (poll = `isPollCycle`/`branchPollCycle`, I via `pollIFlag`), `atBoundary` → `ack` + `requestInterrupt`, `vectorFetch` before cycle 5's sample (hijack); needed by T-CPU-7 and the blargg interrupt suites
-- [ ] `Cpu/Proofs/Refinement.lean` T-REF-1: 13 addressing-prefix lemmas
-- [ ] T-REF-1: ~20 instruction-suffix lemmas
+- [x] Wire `Interrupts` into `Micro`: `sampleCycle` every cycle (poll = `isPollCycle`/`branchPollCycle`, I via `pollIFlag`), `atBoundary` → `ack` + `requestInterrupt`, `vectorFetch` before cycle 5's sample (hijack); needed by T-CPU-7 and the blargg interrupt suites
+- [x] `Cpu/Proofs/Refinement.lean` T-REF-1: 13 addressing-prefix lemmas
+- [ ] T-REF-1: ~20 instruction-suffix lemmas — _done: read (86 opcodes), imm (24), imp (28), write (22); remaining 11 classes / 96 opcodes: rmw (66), jam (12), branch (8), push, pull, jsr, rts, rti, brk, jmpAbs, jmpInd_
 - [ ] T-REF-1: table discharge; `#print axioms` clean
-- [ ] `Cpu/Proofs/Stack.lean` T-CPU-6
+- [x] `Cpu/Proofs/Stack.lean` T-CPU-6
 - [ ] `Cpu/Proofs/Interrupts.lean` T-CPU-7
 - [ ] blargg `cpu_*`, `instr_test-v5`, `cpu_interrupts_v2`, `cpu_dummy_reads/writes` green (a minimal NROM bus may be pulled forward from Phase 3)
 - [ ] PR M2 ready. Create `m3-ppu`.
@@ -172,6 +172,10 @@ the docs, test-harness surprises.
 - 2026-11-17 [cpu] Micro bus-trace facts from Harte: JAM reads PC, PC+1, PC+1 then restores PC; taken branches dummy-read the next instruction, then (page cross) target-low with the old high byte; unstable stores dummy-read with the un-indexed base high byte. Halted CPU reads `$FFFF` each cycle (our choice; untested by Harte).
 - 2026-11-17 [tests] Full native `Test --full` (ISA sweep + per-cycle Micro sweep, 2 × 2.56 M cases) takes ~6m20.
 - 2026-11-17 [cpu] Interrupts: call `ack` when taking an interrupt (else the poll latch refires); `vectorFetch` must run before cycle 5's `sampleCycle` (hijack window); `State.init` already has SP=$FD — power-on RESET from it would give $FA.
+- 2026-11-17 [proofs] T-REF-1 design: compositional. Prefix lemma `runInstr (f+k) ms m = bump k (runInstr f ms' m)` (same `m` ⇒ no writes); class proof = fetch + prefix + suffix via `runInstr_last`, an `exec_<class>` lemma, and a `<class>_table` fact by `decide +kernel`. ~0.1 s per prefix lemma via `cyc`/`cyc_skip`/`skp` tactics. `Isa.exec` is only meaningful on table entries — `exec_<class>` lemmas need instruction guards tied to `classify` by table facts.
+- 2026-11-17 [lean] Rewriting with `runInstr_last`: name `p` explicitly and leave `hu` as a side goal — unifying `?ms.op` with a concrete op hits max recursion. Unfold micro `exec` in `h1` before `generalize decode (m.read s.pc)`.
+- 2026-11-17 [proofs] Step lemmas for fixed opcodes: `obtain ⟨..⟩ := s; subst hh` before `simp only [step, …]`, or simp rewrites `halted` on the RHS too. PHA;PLA / PHP;PLP need `s.pc + 1 ≠ stackAddr s.sp` in flat memory (the push could overwrite the next opcode).
+- 2026-11-17 [cpu] Core power-on: `Core.powerOn s` sets SP := $00 then runs RESET (ends SP=$FD, I set, PC from $FFFC); warm reset leaves SP−3. A JAM-halted core only accepts RESET.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -194,3 +198,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M1  CI green on 7897ff6; definition of done holds; PR #2 marked ready
 - 2026-11-17  M2  started milestone (draft PR #3, base `m1-cpu-isa`)
 - 2026-11-17  M2  Interrupts logic; Micro (41 uops) passes 2,560,000/2,560,000 Harte cases incl. exact bus traces and Isa agreement; trace runner in lake test
+- 2026-11-17  M2  T-CPU-6 (6 thms); interrupts wired in Cpu.Core (18/18 scenarios); T-REF-1 framework + 13 prefixes + 4/15 classes (160/256 opcodes); 77 theorems
