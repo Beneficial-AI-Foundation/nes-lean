@@ -42,7 +42,21 @@ def registry : List Name :=
   , `Nes.Cpu.Proofs.T_CPU_3_struct
   , `Nes.Cpu.Proofs.T_CPU_3_struct_exact
   , `Nes.Cpu.Proofs.T_CPU_4_cycles
-  , `Nes.Cpu.Proofs.T_CPU_4_pageCross ]
+  , `Nes.Cpu.Proofs.T_CPU_4_pageCross
+  , `Nes.Cpu.Proofs.T_CPU_1_adc
+  , `Nes.Cpu.Proofs.T_CPU_1_sbc_eq_adc_compl
+  , `Nes.Cpu.Proofs.T_CPU_1_cmp
+  , `Nes.Cpu.Proofs.T_CPU_2_ror_rol
+  , `Nes.Cpu.Proofs.T_CPU_2_rol_ror
+  , `Nes.Cpu.Proofs.T_CPU_2_asl
+  , `Nes.Cpu.Proofs.T_CPU_2_lsr
+  , `Nes.Cpu.Proofs.T_REF_2_adc
+  , `Nes.Cpu.Proofs.T_REF_2_sbc
+  , `Nes.Cpu.Proofs.T_REF_2_cmp
+  , `Nes.Cpu.Proofs.T_REF_2_shifts
+  , `Nes.Cpu.Proofs.T_REF_2_bit
+  , `Nes.Cpu.Proofs.T_REF_2_incdec
+  , `Nes.Cpu.Proofs.T_REF_2_nz ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

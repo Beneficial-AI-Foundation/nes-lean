@@ -4,3 +4,4 @@ import Nes.Cpu.Types
 import Nes.Cpu.Decode
 import Nes.Cpu.Alu
 import Nes.Cpu.Proofs.Decode
+import Nes.Cpu.Proofs.Alu
