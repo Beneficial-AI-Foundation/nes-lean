@@ -1,2 +1,4 @@
 # cache and other artifacts produced by Lean's Lake build tool
 .lake/
+# test data, fetched by scripts/fetch-testdata.sh
+/testdata/

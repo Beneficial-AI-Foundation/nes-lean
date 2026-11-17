@@ -1,0 +1,22 @@
+name = "nes"
+version = "0.1.0"
+defaultTargets = ["Nes", "nes"]
+testDriver = "Test"
+
+[[require]]
+name = "batteries"
+git = "https://github.com/leanprover-community/batteries"
+rev = "v4.36.0"
+
+[[lean_lib]]
+name = "Nes"
+precompileModules = true
+
+[[lean_exe]]
+name = "nes"
+root = "Main"
+moreLeancArgs = ["-O3", "-DNDEBUG"]
+
+[[lean_exe]]
+name = "Test"
+root = "Test.Main"
