@@ -1,7 +1,7 @@
 import Nes.Cart.Mapper
 
 /-!
-# T-CART-2 — bank offsets are in range (NROM)
+# T-CART-2 — bank offsets are in range (NROM, CNROM)
 
 Range safety is by construction: every mapper's `prgOffset` / `chrOffset` returns a
 `Fin rom.prg.size` / `Fin rom.chrLen`, so ROM reads cannot go out of bounds. This file
@@ -18,6 +18,12 @@ states that explicitly for every `MapperState` constructor and pins down NROM's 
   `(a - $8000) mod $4000`; `Nrom.prgOffset_16k_mirror`: `$C000+i` reads the same byte as
   `$8000+i`.
 * `Nrom.chrOffset_8k`: with an 8 KiB CHR space, PPU `a < $2000` reads CHR byte `a`.
+* `Cnrom.prgOffset_lt` / `Cnrom.chrOffset_lt`: CNROM offsets are in range (by construction).
+* `Cnrom.regWrite_bank_le`: a latched bank never exceeds `bankMask rom`;
+  `Cnrom.regWrite_bank_lt`: with `chrLen = 8 KiB · 2^k` (`k ≤ 8`) the latched bank is
+  `< 2^k`, i.e. a valid bank index.
+* `Cnrom.chrOffset_banked`: with `chrLen = 8 KiB · 2^k` and a valid bank, PPU `a < $2000`
+  reads CHR byte `bank · $2000 + a` (no wrap-around).
 -/
 
 namespace Nes.Cart
@@ -77,5 +83,45 @@ theorem chrOffset_8k (rom : Rom) (s : State) (a : UInt16) (h : rom.chrLen = 8192
   omega
 
 end Nrom
+
+namespace Cnrom
+
+theorem prgOffset_lt (rom : Rom) (s : State) (a : UInt16) :
+    (prgOffset rom s a).val < rom.prg.size := Fin.isLt _
+
+theorem chrOffset_lt (rom : Rom) (s : State) (a : UInt16) :
+    (chrOffset rom s a).val < rom.chrLen := Fin.isLt _
+
+theorem regWrite_bank_le (rom : Rom) (s : State) (a : UInt16) (v : UInt8) (ha : 0x8000 ≤ a) :
+    (regWrite rom s a v).bank ≤ bankMask rom := by
+  simp only [regWrite, ha, ↓reduceIte]
+  show (_ &&& bankMask rom).toNat ≤ (bankMask rom).toNat
+  rw [UInt8.toNat_and]
+  exact Nat.and_le_right
+
+theorem regWrite_bank_lt (rom : Rom) (s : State) (a : UInt16) (v : UInt8) (ha : 0x8000 ≤ a)
+    (k : Nat) (hk : k ≤ 8) (h : rom.chrLen = 8192 * 2 ^ k) :
+    (regWrite rom s a v).bank.toNat < 2 ^ k := by
+  simp only [regWrite, ha, ↓reduceIte, bankMask, h]
+  rw [UInt8.toNat_and, Nat.mul_div_cancel_left _ (by decide), Nat.toUInt8, UInt8.toNat_ofNat']
+  have hp : 2 ^ k ≤ 2 ^ 8 := Nat.pow_le_pow_right (by decide) hk
+  have hp0 : 0 < 2 ^ k := Nat.two_pow_pos k
+  rw [Nat.mod_eq_of_lt (by omega), Nat.and_two_pow_sub_one_eq_mod]
+  exact Nat.mod_lt _ hp0
+
+theorem chrOffset_banked (rom : Rom) (s : State) (a : UInt16) (k : Nat)
+    (h : rom.chrLen = 8192 * 2 ^ k) (hb : s.bank.toNat < 2 ^ k) (ha : a < 0x2000) :
+    (chrOffset rom s a).val = s.bank.toNat * 8192 + a.toNat := by
+  have : a.toNat < 8192 := ha
+  have hlt : s.bank.toNat * 8192 + a.toNat < 8192 * 2 ^ k := by
+    have : (s.bank.toNat + 1) * 8192 ≤ 2 ^ k * 8192 := Nat.mul_le_mul_right _ hb
+    rw [Nat.mul_comm 8192]; rw [Nat.add_mul] at this; omega
+  simp only [chrOffset, h]
+  rw [show (a &&& 0x1FFF).toNat = a.toNat % 8192 from by
+    rw [UInt16.toNat_and]; exact Nat.and_two_pow_sub_one_eq_mod a.toNat 13]
+  rw [Nat.mod_eq_of_lt this]
+  exact Nat.mod_eq_of_lt hlt
+
+end Cnrom
 
 end Nes.Cart

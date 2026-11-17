@@ -16,8 +16,8 @@ Drives `Nes.System.Nes` (CPU core + PPU + NROM cart; no APU) with blargg's PPU t
 `run` prints one line per ROM and a summary, and returns the number of failing ROMs (those in
 `knownFail` are reported but not counted); it skips when the test data is absent.
 
-Status: all `ppu_vbl_nmi` (10), `sprite_hit_tests_2005.10.05` (11) and `sprite_overflow_tests`
-(5) pass. `ppu_read_buffer` needs mapper 3 (CNROM), which the cart does not implement yet.
+Status: all `ppu_vbl_nmi` (10), `sprite_hit_tests_2005.10.05` (11), `sprite_overflow_tests` (5)
+and `ppu_read_buffer` (1; a CNROM / mapper 3 cart) pass.
 -/
 
 namespace Test.BlarggPpu
@@ -105,8 +105,7 @@ def romDir : System.FilePath := "testdata/nes-test-roms"
 
 /-- ROMs that cannot pass yet, with the reason (reported, not counted as failures). -/
 def knownFail : List (String × String) :=
-  [ ("ppu_read_buffer/test_ppu_read_buffer.nes",
-     "CNROM (mapper 3, 32 KiB CHR) cart; only NROM is implemented (M4 mapper item)") ]
+  []
 
 /-- The ROMs of this item, with protocol and cycle budget. -/
 def roms : List (String × Proto × Nat) :=
