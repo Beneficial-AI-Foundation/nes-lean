@@ -6,9 +6,9 @@ Keep this file small: trim the tick log, never paste build output here.
 
 ## Resume here
 
-- **Current milestone:** M3
-- **Current branch:** `m3-ppu`
-- **Next action:** M3 close — CI green on the last commit, definition of done, final PR body, `gh pr ready 4`; then start M4 (`m4-system` from `m3-ppu`).
+- **Current milestone:** M4
+- **Current branch:** `m4-system`
+- **Next action:** M4 batch: System stepCycle/Frame + T-SYS-1/3 ∥ DMA + T-SYS-2 ∥ mappers MMC1/UxROM/AxROM ∥ MMC3 + A12 IRQ (check file overlap on `System/Nes.lean` and `Cart/Mapper.lean` first).
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -25,7 +25,7 @@ when the milestone's definition of done holds.
 | M1 | nestest green | 1 | `m1-cpu-isa` | `main` | #2 | ready for review |
 | M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | #3 | ready for review |
 | M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | #4 | ready for review |
-| M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | — | not started |
+| M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | — | in progress |
 | M5 | Sounds right | 6 | `m5-apu` | `m4-system` | — | not started |
 | M6 | The PPU theorem | 8 | `m6-ppu-theorem` | `m5-apu` | — | not started |
 | M7 | Verified 6502 programs | 10 | `m7-hoare` | `m6-ppu-theorem` | — | not started |
@@ -245,3 +245,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M3  Frontend palette/PNG/PPM/hash; Ppu.Step + minimal System; blargg PPU 26/27; renderLatch at (261,338) from even_odd_timing
 - 2026-11-17  M3  CNROM → blargg PPU 27/27; `nes run` CLI; spritecans golden hashes (frame viewed); ~70 fps; all M3 work items ticked
 - 2026-11-17  M3  CI green on 4d9fe94; definition of done holds; PR #4 marked ready
+- 2026-11-17  M4  started milestone (branch `m4-system`, base `m3-ppu`)
