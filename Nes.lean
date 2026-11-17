@@ -62,3 +62,8 @@ import Nes.Apu.Dmc
 import Nes.Apu.Proofs.Dmc
 import Nes.Apu.FrameCounter
 import Nes.Apu.Proofs.FrameCounter
+import Nes.Apu.Units
+import Nes.Apu.Pulse
+import Nes.Apu.Triangle
+import Nes.Apu.Noise
+import Nes.Apu.Proofs.Units
