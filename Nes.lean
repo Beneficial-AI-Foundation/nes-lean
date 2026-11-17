@@ -6,3 +6,5 @@ import Nes.Cpu.Alu
 import Nes.Cpu.Proofs.Decode
 import Nes.Cpu.Proofs.Alu
 import Nes.Cpu.Isa
+import Nes.Cpu.Proofs.Isa
+import Nes.Cpu.Proofs.Conformance

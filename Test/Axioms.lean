@@ -56,7 +56,50 @@ def registry : List Name :=
   , `Nes.Cpu.Proofs.T_REF_2_shifts
   , `Nes.Cpu.Proofs.T_REF_2_bit
   , `Nes.Cpu.Proofs.T_REF_2_incdec
-  , `Nes.Cpu.Proofs.T_REF_2_nz ]
+  , `Nes.Cpu.Proofs.T_REF_2_nz
+  , `Nes.Cpu.Proofs.T_CPU_5_zp_page0
+  , `Nes.Cpu.Proofs.T_CPU_5_zpPtr
+  , `Nes.Cpu.Proofs.T_CPU_5_pageCross
+  , `Nes.Cpu.Proofs.T_CPU_5_pageCross_unwrapped
+  , `Nes.Cpu.Proofs.T_CPU_5_resolve_indexed
+  , `Nes.Cpu.Proofs.T_CPU_5_step_cycles
+  , `Nes.Cpu.Proofs.T_CPU_5_step_cycles_branch
+  , `Nes.Cpu.Proofs.T_CPU_5_jmp_ind_hiAddr
+  , `Nes.Cpu.Proofs.T_CPU_5_jmp_ind_bug
+  , `Nes.Cpu.Proofs.T_CPU_5_jmp_ind_nobug
+  , `Nes.Cpu.Proofs.T_CPU_5_pc_wrap
+  , `Nes.Cpu.Proofs.T_CPU_5_branchTarget
+  , `Nes.Cpu.Proofs.T_CPU_8_a9_lda_imm
+  , `Nes.Cpu.Proofs.T_CPU_8_bd_lda_absx
+  , `Nes.Cpu.Proofs.T_CPU_8_8d_sta_abs
+  , `Nes.Cpu.Proofs.T_CPU_8_91_sta_indy
+  , `Nes.Cpu.Proofs.T_CPU_8_69_adc_imm
+  , `Nes.Cpu.Proofs.T_CPU_8_e9_sbc_imm
+  , `Nes.Cpu.Proofs.T_CPU_8_2d_and_abs
+  , `Nes.Cpu.Proofs.T_CPU_8_2c_bit_abs
+  , `Nes.Cpu.Proofs.T_CPU_8_c9_cmp_imm
+  , `Nes.Cpu.Proofs.T_CPU_8_0e_asl_abs
+  , `Nes.Cpu.Proofs.T_CPU_8_6a_ror_acc
+  , `Nes.Cpu.Proofs.T_CPU_8_ee_inc_abs
+  , `Nes.Cpu.Proofs.T_CPU_8_ca_dex
+  , `Nes.Cpu.Proofs.T_CPU_8_d0_bne
+  , `Nes.Cpu.Proofs.T_CPU_8_4c_jmp_abs
+  , `Nes.Cpu.Proofs.T_CPU_8_6c_jmp_ind
+  , `Nes.Cpu.Proofs.T_CPU_8_20_jsr
+  , `Nes.Cpu.Proofs.T_CPU_8_60_rts
+  , `Nes.Cpu.Proofs.T_CPU_8_48_pha
+  , `Nes.Cpu.Proofs.T_CPU_8_68_pla
+  , `Nes.Cpu.Proofs.T_CPU_8_08_php
+  , `Nes.Cpu.Proofs.T_CPU_8_28_plp
+  , `Nes.Cpu.Proofs.T_CPU_8_00_brk
+  , `Nes.Cpu.Proofs.T_CPU_8_40_rti
+  , `Nes.Cpu.Proofs.T_CPU_8_18_clc
+  , `Nes.Cpu.Proofs.T_CPU_8_38_sec
+  , `Nes.Cpu.Proofs.T_CPU_8_aa_tax
+  , `Nes.Cpu.Proofs.T_CPU_8_9a_txs
+  , `Nes.Cpu.Proofs.T_CPU_8_a7_lax_zp
+  , `Nes.Cpu.Proofs.T_CPU_8_c7_dcp_zp
+  , `Nes.Cpu.Proofs.T_CPU_8_02_jam ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
