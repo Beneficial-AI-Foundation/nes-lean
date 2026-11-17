@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M4
 - **Current branch:** `m4-system`
-- **Next action:** M4 performance pass (3-tick budget): profile `stepCycle`, read the generated C, remove boxing/allocation/closures; target ≥ 60 fps (real time) on a homebrew ROM — currently ~65–70 fps; record numbers. Then PR M4 ready.
+- **Next action:** M4 close — CI green on the last commit, definition of done, final PR body, `gh pr ready 5`; then start M5 (`m5-apu` from `m4-system`).
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -107,7 +107,7 @@ Parallel tracks: {System stepCycle/Frame + T-SYS-1/3} ∥ {DMA + T-SYS-2} ∥ {S
 - [x] Mappers: MMC1 (+T-CART-3), UxROM, CNROM (done in M3), AxROM (+T-CART-2 each)
 - [x] MMC3 with A12 IRQ (+T-CART-2, T-CART-4); MMC3 IRQ test ROMs green — 15/15 Sharp-MMC3 ROMs; MMC3A/MMC6 ROMs known-fail (old IRQ behaviour not modelled)
 - [x] Golden frame hashes for 3+ homebrew ROMs across mappers (8 new: MMC1 ×2, UxROM ×2, AxROM, CNROM ×2, MMC3)
-- [ ] Performance pass on the native binary: profile `stepCycle`, read its generated C, remove boxing/allocation/closures per PLAN.md §4 "Performance"; target ≥ real time (60 fps) on a homebrew ROM; record numbers (3-tick budget, then move on)
+- [x] Performance pass on the native binary: profile `stepCycle`, read its generated C, remove boxing/allocation/closures per PLAN.md §4 "Performance"; target ≥ real time (60 fps) on a homebrew ROM; record numbers (3-tick budget, then move on)
 - [ ] PR M4 ready. Create `m5-apu`.
 
 ### M5 — Sounds right (Phase 6)
@@ -142,6 +142,7 @@ _(fill in: ISA instr/s at M1; frames/s at M4 and after the perf pass)_
 - 2026-11-17 M3 whole system (CPU+bus+NROM+PPU, no APU), `nes run spritecans.nes --frames 120`: **~70 frames/s, ~1.16× NTSC realtime** (-O3, Apple M5 Max), before any perf pass.
 - 2026-11-17 M1 ISA `step`, `nes --bench` (-O3, Apple M5 Max arm64, synthetic loop of LDA/ADC/STA abs,X/ROL/CMP/JSR/RTS/INX/DEX/BNE): **~35 M instr/s, ~115 M cycles/s, ~64× NTSC realtime** (median of 3).
   Generated C (`.lake/build/ir/Nes/Cpu/Isa.c`): memory written in place (`lean_array_fset`, no copies); per instruction ~3–4 small allocs: 2 `Prod` cells for `State × Mem × Nat` (Isa.lean:280), 1 pair from `exec` (Isa.lean:156), fresh `State` in `setZN` join points (65 sites), `Alu.RC` from `shiftOp` lambdas (Isa.lean:143); `Mem = Vector UInt8` is an array of boxed scalars (8 B/byte, `lean_unbox` per read); `AddrMode` `==` goes through `lean_nat_dec_eq`. M4 fixes: flat `StepOut` struct, `UInt` cycles, inline `exec`/`setZN`, enum shift op, `ByteArray`-backed memory with a `Vector` spec view, `match` instead of derived `BEq`.
+- 2026-11-17 M4 after perf pass, `nes run … --frames 600` (-O3, Apple M5 Max): **spritecans ~180 fps (3.0× realtime), BladeBuster (MMC3) ~170 fps (2.8×)** — from ~66/63 fps. Profile after: CPU interpreter in `stepCycle` 24%, `spritePixelAux` 8%, `Ppu.dot` 6.5%, `advance` 6.5%, `evalDot` 5%. Remaining per-cycle allocation: CPU path (`Cpu.State` rebuilds in Micro/Core, ~6%), sprite `fetchDot`, MMC3 inner state.
 
 ## Deferred theorems
 _(theorem id — why — what would unblock it)_
@@ -213,6 +214,7 @@ the docs, test-harness surprises.
 - 2026-11-17 [proofs] T-SYS-4's NMI theorem assumes the CPU's reads in the window agree with a flat 64 KiB image (T-CPU-7 is stated over flat `Mem`) and that the NMI/IRQ lines are held; the general system→core projection (`T_SYS_4_cpu_projection`) has no such assumption.
 - 2026-11-17 [roms] MMC3: A12 follows `v` when rendering is off, so `$2006`/`$2007` accesses clock the counter (A12_clocking tests pass); counter clocks on the first sprite fetch (dot 261); `$C001` clears the counter without setting IRQ. `other/high-hopes.nes` (MMC3) renders black at 240/600 — unexplained, investigate later; `240pee-bnrom.nes` is mapper 34 (unsupported).
 - 2026-11-17 [lean] `Nat.strong_induction_on` doesn't exist in this core — use `Nat.strongRecOn`.
+- 2026-11-17 [perf] Lean's reset/reuse does not reach a `{ s with … }` placed inside a join point declared before the state's last use — any update after branches or under `&&` chains allocates a fresh structure (Ppu.State has ~49 fields). Fix pattern: a `@[specialize, noinline]` branchy helper returns packed scalars (UInt64), then ONE straight-line `{ s with … }`. Also: `@[inline]` on a recursive loop blocks `@[specialize]` (use a non-inline specialised worker); capturing the whole `Nes` in a closure kept `ppu` shared and copied the 60 KiB frame every dot (16.9 fps); a `Nat` shift (`y.toNat <<< 8`) took a GMP path per pixel (~33% of runtime).
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -256,3 +258,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M4  started milestone (draft PR #5, base `m3-ppu`)
 - 2026-11-17  M4  mappers MMC1/UxROM/AxROM/MMC3 (T-CART-2/3/4, T-BUS-2); System clock + DMA (T-SYS-1/2/3); blargg PPU 29/29; 194 theorems
 - 2026-11-17  M4  MMC3 ROMs 15/15; save states + T-REF-3/4; T-SYS-4; 8 new golden hashes (11 total); 209 theorems; only perf pass + PR ready left
+- 2026-11-17  M4  perf pass: ~180/170 fps (3.0×/2.8× realtime) from ~66/63; golden hashes unchanged; all M4 work items ticked
