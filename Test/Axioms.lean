@@ -149,7 +149,19 @@ def registry : List Name :=
   , `Nes.Cpu.Proofs.T_CPU_7_nmi_latency_mid
   , `Nes.Input.Proofs.controller_reads_in_order
   , `Nes.Input.Proofs.controller_after_8
-  , `Nes.Input.Proofs.controller_strobe_high ]
+  , `Nes.Input.Proofs.controller_strobe_high
+  , `Nes.Ppu.Proofs.T_PPU_2_incX_32
+  , `Nes.Ppu.Proofs.T_PPU_2_incY_29
+  , `Nes.Ppu.Proofs.T_PPU_2_incY_31
+  , `Nes.Ppu.Proofs.T_PPU_2_copyX
+  , `Nes.Ppu.Proofs.T_PPU_2_copyY
+  , `Nes.Ppu.Proofs.T_PPU_2_2005_pair
+  , `Nes.Ppu.Proofs.T_PPU_2_2006_pair
+  , `Nes.Ppu.Proofs.T_REF_2_incX
+  , `Nes.Ppu.Proofs.T_REF_2_incY
+  , `Nes.Ppu.Proofs.T_REF_2_copyX
+  , `Nes.Ppu.Proofs.T_REF_2_copyY
+  , `Nes.Ppu.Proofs.T_REF_2_loopy ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

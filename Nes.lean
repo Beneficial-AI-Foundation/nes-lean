@@ -19,3 +19,7 @@ import Nes.Cpu.Proofs.InterruptsLatency
 import Nes.Cart.Mirroring
 import Nes.Input.Controller
 import Nes.Input.Proofs.Controller
+import Nes.Ppu.Types
+import Nes.Ppu.Loopy
+import Nes.Ppu.Registers
+import Nes.Ppu.Proofs.Loopy
