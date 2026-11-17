@@ -80,7 +80,7 @@ Parallel tracks: {Micro → Harte trace runner} ∥ {Interrupts}; then T-REF-1 p
 - [x] `Cpu/Proofs/Stack.lean` T-CPU-6
 - [x] `Cpu/Proofs/Interrupts.lean` T-CPU-7 (IRQ masked, entry/BRK/B-bit/hijack over `Core`, NMI latch, 8-cycle boundary bound)
 - [ ] T-CPU-7 NMI latency end-to-end over `Core` (≤ `maxInstrCycles + 7` cycles from edge): relate `Core.runCycles` to `MicroState.runInstr`; show every instruction polls before its boundary (attempt 1 of 3 done)
-- [ ] T-CPU-7 hijack with an NMI edge in BRK cycles 2–4 and NMI consumed at the core layer (needs a per-cycle line-schedule runner); IRQ-masked core theorem derived from the opcode instead of assumed I=1 (attempt 1 of 3 done)
+- [x] T-CPU-7 hijack with an NMI edge in BRK cycles 2–4 and NMI consumed at the core layer (needs a per-cycle line-schedule runner); IRQ-masked core theorem derived from the opcode instead of assumed I=1 (closed in attempt 2: `T_CPU_7_hijack_mid/late`, `T_CPU_7_irq_masked_opcode`, line-schedule runner `runSched`)
 - [x] blargg `cpu_*`, `instr_test-v5`, `cpu_interrupts_v2`, `cpu_dummy_reads/writes` green (a minimal NROM bus may be pulled forward from Phase 3) — 28/28 on test-only NROM/MMC1/CNROM bus + crude PPU/APU timing (`Test/Blargg.lean`); re-validate on the real PPU/APU in M3/M5
 - [ ] PR M2 ready. Create `m3-ppu`.
 
@@ -185,6 +185,7 @@ the docs, test-harness surprises.
 - 2026-11-17 [tests] Crude PPU timing in `Test/Blargg.lean`: 2 PPU dots before the CPU bus access and 1 after (`ppuPre := 2`) — 3 breaks cpu_interrupts test 3, 1 breaks test 2. Useful prior for the real `stepCycle` ordering in M4.
 - 2026-11-17 [tests] blargg harness: MMC1 ignores serial writes on consecutive cycles; `$81` handled by asserting RESET ~200k cycles later; ROMs without the `$6000` protocol are judged by nametable text. Test-exe -O3 C compile of `Test.Blargg` ~3 min; full blargg list runs ~33 s.
 - 2026-11-17 [proofs] T-CPU-7 tactics: don't unfold `IntState.sampleCycle` in multi-cycle `Core` runs — use field lemmas (`sc_nmiPending`, `vf_fst`, `boundary_cpu/pos`); leaving `pushOp` out of simp makes it time out; illegal RMW (ind),Y/(ind,X) are 8 cycles (the 8-cycle boundary bound needs a separate RMW case); no `interval_cases` without Mathlib — use an `omega` disjunction.
+- 2026-11-17 [proofs] `State.flags_set*` lemmas use `bv_decide` (native axiom); to keep a theorem on standard axioms re-prove the flag fact by `decide` over the 256 status bytes. `let` in theorem statements caused whnf timeouts when used with `exact` — `dsimp only` goal and hypothesis first.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
