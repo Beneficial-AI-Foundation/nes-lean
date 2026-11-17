@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M5
 - **Current branch:** `m5-apu`
-- **Next action:** M5: make `dmc_dma_during_read4/double_2007_read` pass (PPU `$2007` read-buffer behaviour on repeated reads during a DMC halt; attempt 1); optionally `sprdma_and_dmc_dma`; then PR M5 ready.
+- **Next action:** M5 close — CI green on the last commit, definition of done, final PR body, `gh pr ready 6`; then start M6 (`m6-ppu-theorem` from `m5-apu`; headline T-PPU-6).
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -116,7 +116,7 @@ Parallel tracks: {FrameCounter + T-APU-1 + DMC DMA wiring} ∥ {pulse/triangle/n
 - [x] Pulse ×2, triangle, noise, length counters, envelopes, sweeps
 - [x] `Apu/Dmc.lean` + T-APU-3
 - [x] `Apu/Mixer.lean` + T-APU-2; WAV output in CLI
-- [ ] blargg `apu_test`, `dmc_dma_during_read4`, `apu_reset` green — _apu_test 8/8, apu_reset 6/6 (+ blargg_apu_2005 11/11); `dmc_dma_during_read4` 4/5: `double_2007_read` fails (PPU back-to-back `$2007` reads during a DMC halt) — fix next_
+- [x] blargg `apu_test`, `dmc_dma_during_read4`, `apu_reset` green — apu_test 8/8, dmc_dma_during_read4 5/5, apu_reset 6/6 (+ blargg_apu_2005 11/11); `sprdma_and_dmc_dma` ×2 known-fail (expected table undocumented)
 - [ ] PR M5 ready. Create `m6-ppu-theorem`.
 
 ### M6 — The PPU theorem (Phase 8)
@@ -224,6 +224,7 @@ the docs, test-harness surprises.
 - 2026-11-17 [apu] Tests forced: length-counter halt write is deferred past a coincident half-frame clock; a length reload is ignored if the counter is nonzero on that clock; DMC timer starts at phase 426 (refill steals 4 cycles — `dmc_dma_during_read4` sync); power-on/reset applies one frame-counter tick (10–11 cycle delay). The "`$4015` read on the set cycle doesn't clear the frame IRQ" rule broke `6-irq_flag_timing` and was dropped.
 - 2026-11-17 [proofs] System theorems gained hypotheses with the APU: T-SYS-2 (`stepCycle_dma`, `dma_run`, `write4014`, `T_SYS_2_oam_dma`) assume `DmcIdle`; T-SYS-4 (`step_cpu`, `cpu_projection*`, `T_SYS_4_nmi`) assume `dmcBusy = false`; `T_SYS_4_apuIrq` now = `fc.irq || dmc.irqFlag`. Save-state format v2.
 - 2026-11-17 [roms] With the APU, `instr_misc` (incl. 04-dummy_reads_apu), `instr_timing`, `cpu_exec_space_apu`, `cpu_interrupts_v2` pass on the real System (not only the M2 scaffolding). `sprdma_and_dmc_dma` prints a 528/526 table with a CRC mismatch — expected table not found online.
+- 2026-11-17 [ppu] **Hardware:** a `$2007` read's buffer refill lands slightly more than one CPU cycle later while `v` increments immediately, so a read on the very next CPU cycle (e.g. the dummy read of a page-crossing `lda $20F7,x`) returns the buffer from *before* the previous refill and refills from the already-incremented `v` (blargg `double_2007_read.s` comments). Modelled with `prevBuffer` + `lastRead2007` (CPU cycle); save-state v3.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -272,3 +273,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M5  started milestone (draft PR #6, base `m4-system`)
 - 2026-11-17  M5  APU components: FrameCounter+T-APU-1, channels+units (LFSR period proved), DMC+T-APU-3, Mixer+T-APU-2 (table error bounds), WAV; 237 theorems
 - 2026-11-17  M5  APU composed + wired (DMC DMA), --wav, blargg APU 29/32 (double_2007_read, sprdma ×2 known-fail); 136 fps; golden unchanged
+- 2026-11-17  M5  double_2007_read fixed (back-to-back $2007 refill delay); blargg APU 30/30; 240 theorems; all M5 items ticked
