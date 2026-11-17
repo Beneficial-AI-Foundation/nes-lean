@@ -22,7 +22,7 @@ when the milestone's definition of done holds.
 | M | Title | Plan phases | Branch | Base | PR | Status |
 |---|---|---|---|---|---|---|
 | M0 | Scaffold | 0 | `m0-scaffold` | `main` | #1 | merged |
-| M1 | nestest green | 1 | `m1-cpu-isa` | `main` | #2 | in progress |
+| M1 | nestest green | 1 | `m1-cpu-isa` | `main` | #2 | ready for review |
 | M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | — | not started |
 | M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | — | not started |
 | M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | — | not started |
@@ -66,7 +66,7 @@ Parallel tracks: {Types → Alu → Alu proofs} ∥ {Decode → Decode proofs} �
 - [x] `Test/Nestest.lean`: automated mode from `$C000`, log formatter, diff against golden log → green
 - [x] Benchmark ISA `step` (instr/s) in the native `nes --bench` binary (not `#eval`); inspect the generated C for `step` in `.lake/build/ir/` for boxing/allocation; record below
 - [x] T-CPU-8: one Harte case per instruction class proved by `decide`
-- [ ] PR M1 ready. Create `m2-cpu-micro`.
+- [x] PR M1 ready. Create `m2-cpu-micro`.
 
 ### M2 — Cycle-exact and proved (Phase 2)
 Parallel tracks: {Micro → Harte trace runner} ∥ {Interrupts}; then T-REF-1 prefix lemmas ∥ suffix lemmas (one subagent per lemma group, disjoint files `Proofs/Refinement/Prefix*.lean`, `Suffix*.lean`) ∥ T-CPU-6 ∥ T-CPU-7 ∥ blargg CPU suites; then table discharge.
@@ -187,3 +187,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M1  PR #1 merged → rebased M1 onto main; Alu (spec+fast) and T-CPU-3/T-CPU-4 proved; 8 theorems in registry
 - 2026-11-17  M1  Isa.step: Harte 2,560,000/2,560,000 (+cycles), nestest 8991/8991; ALU proofs T-CPU-1/2, T-REF-2 (22 theorems); CI fetches testdata
 - 2026-11-17  M1  T-CPU-5 (11 thms), T-CPU-8 (31 Harte cases as theorems), bench 35 M instr/s; 65 theorems in registry; all M1 items but PR-ready ticked
+- 2026-11-17  M1  CI green on 7897ff6; definition of done holds; PR #2 marked ready
