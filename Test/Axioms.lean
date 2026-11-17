@@ -184,7 +184,22 @@ def registry : List Name :=
   , `Nes.Cart.Cart.ppuWrite_rom
   , `Nes.Cart.Cart.run_rom
   , `Nes.Cart.Cart.run_cpuRead_prg_nrom
-  , `Nes.Cart.Cart.run_ppuRead_chr_nrom ]
+  , `Nes.Cart.Cart.run_ppuRead_chr_nrom
+  , `Nes.Ppu.Proofs.T_PPU_1_frame_dots
+  , `Nes.Ppu.Proofs.T_PPU_1_odd_frame
+  , `Nes.Ppu.Proofs.T_PPU_1_vblank_set
+  , `Nes.Ppu.Proofs.T_PPU_1_vblank_clear
+  , `Nes.Ppu.Proofs.T_PPU_1_cpu_cycles
+  , `Nes.Ppu.Proofs.T_PPU_1_frame_rate
+  , `Nes.Ppu.Proofs.T_PPU_7_buffered
+  , `Nes.Ppu.Proofs.T_PPU_7_palette
+  , `Nes.Ppu.Proofs.T_PPU_7_increment
+  , `Nes.Ppu.Proofs.T_PPU_7_two_reads
+  , `Nes.Ppu.Proofs.T_PPU_5_nmi_at_vblank
+  , `Nes.Ppu.Proofs.T_PPU_5_retrigger
+  , `Nes.Ppu.Proofs.T_PPU_5_toggle
+  , `Nes.Ppu.Proofs.T_PPU_5_retrigger_cpuWrite
+  , `Nes.Ppu.Proofs.T_PPU_5_suppress ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
