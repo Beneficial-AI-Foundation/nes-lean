@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M1
 - **Current branch:** `m1-cpu-isa`
-- **Next action:** M1 batch: `Cpu/Proofs/Isa.lean` (T-CPU-5) ∥ native ISA benchmark (`nes --bench`) ∥ T-CPU-8 (`decide` on Harte cases); then PR M1 ready.
+- **Next action:** M1 close — confirm CI green on PR #2, check definition of done, final PR body, mark ready; then start M2 (`m2-cpu-micro` from `m1-cpu-isa`).
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -60,12 +60,12 @@ Parallel tracks: {Types → Alu → Alu proofs} ∥ {Decode → Decode proofs} �
 - [x] `Cpu/Decode.lean`: `Instr`, `AddrMode`, 256-entry table (official + unofficial + 12 JAM), base cycles, page-cross flag
 - [x] `Cpu/Proofs/Decode.lean`: T-CPU-3 (totality, JAM set, `aaabbbcc` agreement on official), T-CPU-4 (cycle table)
 - [x] `Cpu/Isa.lean`: operand resolution per mode with page-cross detection; execution; `step : State → Mem → State × Mem × Nat`
-- [ ] `Cpu/Proofs/Isa.lean`: T-CPU-5 (zero-page wrap, page-cross condition, `JMP ($xxFF)` bug, PC wrap)
+- [x] `Cpu/Proofs/Isa.lean`: T-CPU-5 (zero-page wrap, page-cross condition, `JMP ($xxFF)` bug, PC wrap)
 - [x] `Test/Harte.lean`: JSON loader for `nes6502` (flat 64 KiB memory), final-state diff; fast subset in `lake test`
 - [x] Harte final-state sweep 256/256 green (fix the spec until green; log every hardware surprise as a gotcha)
 - [x] `Test/Nestest.lean`: automated mode from `$C000`, log formatter, diff against golden log → green
-- [ ] Benchmark ISA `step` (instr/s) in the native `nes --bench` binary (not `#eval`); inspect the generated C for `step` in `.lake/build/ir/` for boxing/allocation; record below
-- [ ] T-CPU-8: one Harte case per instruction class proved by `decide`
+- [x] Benchmark ISA `step` (instr/s) in the native `nes --bench` binary (not `#eval`); inspect the generated C for `step` in `.lake/build/ir/` for boxing/allocation; record below
+- [x] T-CPU-8: one Harte case per instruction class proved by `decide`
 - [ ] PR M1 ready. Create `m2-cpu-micro`.
 
 ### M2 — Cycle-exact and proved (Phase 2)
@@ -135,6 +135,8 @@ Parallel tracks: Logic → Rules (sequential); then the four verified routines, 
 
 ## Benchmarks
 _(fill in: ISA instr/s at M1; frames/s at M4 and after the perf pass)_
+- 2026-11-17 M1 ISA `step`, `nes --bench` (-O3, Apple M5 Max arm64, synthetic loop of LDA/ADC/STA abs,X/ROL/CMP/JSR/RTS/INX/DEX/BNE): **~35 M instr/s, ~115 M cycles/s, ~64× NTSC realtime** (median of 3).
+  Generated C (`.lake/build/ir/Nes/Cpu/Isa.c`): memory written in place (`lean_array_fset`, no copies); per instruction ~3–4 small allocs: 2 `Prod` cells for `State × Mem × Nat` (Isa.lean:280), 1 pair from `exec` (Isa.lean:156), fresh `State` in `setZN` join points (65 sites), `Alu.RC` from `shiftOp` lambdas (Isa.lean:143); `Mem = Vector UInt8` is an array of boxed scalars (8 B/byte, `lean_unbox` per read); `AddrMode` `==` goes through `lean_nat_dec_eq`. M4 fixes: flat `StepOut` struct, `UInt` cycles, inline `exec`/`setZN`, enum shift op, `ByteArray`-backed memory with a `Vector` spec view, `match` instead of derived `BEq`.
 
 ## Deferred theorems
 _(theorem id — why — what would unblock it)_
@@ -163,12 +165,16 @@ the docs, test-harness surprises.
 - 2026-11-17 [cpu] Harte ground truth: PHP/BRK push `P | $30`; PLP/RTI load `(v & $CF) | $20`. JAM leaves all registers incl. PC unchanged (3 cycles). XAA: `A := (A | $EE) & X & imm`; LAX #imm: `A,X := (A | $EE) & imm`. SHY/SHX/AHX/TAS store `reg & (H+1)` (H = base high byte) and on page cross that value replaces the address high byte; TAS sets `SP := A & X`. ARR: C = bit 6, V = bit 6 ^ bit 5.
 - 2026-11-17 [tests] Full Harte sweep (2.56 M cases, final state + cycle count) takes ~2m54 in the native `Test` exe (`lake test -- --full`) vs ~3m40 interpreted; fast subset + nestest ~6 s.
 - 2026-11-17 [cpu] `Isa.exec` reads `m.read ea` even for stores/implied modes — harmless on pure memory, but must not leak into the M3 bus (side-effecting reads).
+- 2026-11-17 [proofs] Kernel `decide` on a concrete 64 KiB `Vector` is hopeless (Array ops reduce via `List`: one LDA #imm case 9 s, STA abs 30 s). T-CPU-8 instead proves each case for *all* memories agreeing on the listed cells: unfold `step`, rewrite reads with the hypotheses + read-after-write lemma, per-case `decode 0xNN = … := rfl`, `decide` the residue (~0.08 s/theorem).
+- 2026-11-17 [ci] The CI `grep -rnw native_decide Nes/` also matches comments and docstrings — never write the word under `Nes/`, even in prose.
+- 2026-11-17 [lean] `(256 : UInt16).toNat` doesn't reduce for omega; add `show (256 : UInt16).toNat = 256 from rfl`.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
 - 2026-11-17 Phase 9 (performance) folded into M4; M0 added as its own PR so CI exists before M1.
 - 2026-11-17 `bv_decide` (named in PLAN.md §4 as the bit-level proof tool) is accepted even though in v4.36 it trusts compiled evaluation via a per-theorem `_native.bv_decide` axiom; `native_decide` stays banned. The trust is confined to `allowedNativeTactics` in `Test/Axioms.lean`.
 - 2026-11-17 The product is the native binary from Lean's C backend with `-O3`; hot-path rules in PLAN.md §4 apply from M1 (PLAN.md §10 decision 6).
+- 2026-11-17 T-CPU-8 is proved by `simp` + `decide` over a universally quantified memory rather than kernel `decide` on a concrete 64 KiB memory (infeasible in the kernel). The statement is stronger than the plan's (holds for every memory agreeing with the case).
 
 ## Tick log (keep the last 20 lines only)
 _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
@@ -180,3 +186,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M1  4 agents: Types, Decode (cycles validated vs all Harte files), Harte loader, nestest harness; build/test green
 - 2026-11-17  M1  PR #1 merged → rebased M1 onto main; Alu (spec+fast) and T-CPU-3/T-CPU-4 proved; 8 theorems in registry
 - 2026-11-17  M1  Isa.step: Harte 2,560,000/2,560,000 (+cycles), nestest 8991/8991; ALU proofs T-CPU-1/2, T-REF-2 (22 theorems); CI fetches testdata
+- 2026-11-17  M1  T-CPU-5 (11 thms), T-CPU-8 (31 Harte cases as theorems), bench 35 M instr/s; 65 theorems in registry; all M1 items but PR-ready ticked
