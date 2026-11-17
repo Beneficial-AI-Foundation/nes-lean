@@ -249,7 +249,11 @@ def registry : List Name :=
   , `Nes.Apu.Proofs.T_APU_3_loop
   , `Nes.Apu.Proofs.T_APU_3_irq
   , `Nes.Apu.Proofs.T_APU_3_stall
-  , `Nes.Apu.Proofs.dmc_output_bounds ]
+  , `Nes.Apu.Proofs.dmc_output_bounds
+  , `Nes.Apu.Proofs.T_APU_1_four_step
+  , `Nes.Apu.Proofs.T_APU_1_five_step
+  , `Nes.Apu.Proofs.T_APU_1_irq
+  , `Nes.Apu.Proofs.T_APU_1_immediate ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

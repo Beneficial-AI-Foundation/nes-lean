@@ -60,3 +60,5 @@ import Nes.System.Proofs.Determinism
 import Nes.System.Proofs.Interrupts
 import Nes.Apu.Dmc
 import Nes.Apu.Proofs.Dmc
+import Nes.Apu.FrameCounter
+import Nes.Apu.Proofs.FrameCounter
