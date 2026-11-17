@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M2
 - **Current branch:** `m2-cpu-micro`
-- **Next action:** M2 batch: `Cpu/Proofs/Interrupts.lean` T-CPU-7 (simulation over `Cpu.Core`) ∥ blargg CPU suites (minimal NROM bus + `$6000` protocol runner); then PR M2 ready.
+- **Next action:** M2: T-CPU-7 attempt 2 — NMI latency end-to-end (`Proofs/InterruptsLatency.lean`) ∥ hijack edge in cycles 2–4 + opcode-derived IRQ masking (`Proofs/InterruptsHijack.lean`); then PR M2 ready.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -81,7 +81,7 @@ Parallel tracks: {Micro → Harte trace runner} ∥ {Interrupts}; then T-REF-1 p
 - [x] `Cpu/Proofs/Interrupts.lean` T-CPU-7 (IRQ masked, entry/BRK/B-bit/hijack over `Core`, NMI latch, 8-cycle boundary bound)
 - [ ] T-CPU-7 NMI latency end-to-end over `Core` (≤ `maxInstrCycles + 7` cycles from edge): relate `Core.runCycles` to `MicroState.runInstr`; show every instruction polls before its boundary (attempt 1 of 3 done)
 - [ ] T-CPU-7 hijack with an NMI edge in BRK cycles 2–4 and NMI consumed at the core layer (needs a per-cycle line-schedule runner); IRQ-masked core theorem derived from the opcode instead of assumed I=1 (attempt 1 of 3 done)
-- [ ] blargg `cpu_*`, `instr_test-v5`, `cpu_interrupts_v2`, `cpu_dummy_reads/writes` green (a minimal NROM bus may be pulled forward from Phase 3)
+- [x] blargg `cpu_*`, `instr_test-v5`, `cpu_interrupts_v2`, `cpu_dummy_reads/writes` green (a minimal NROM bus may be pulled forward from Phase 3) — 28/28 on test-only NROM/MMC1/CNROM bus + crude PPU/APU timing (`Test/Blargg.lean`); re-validate on the real PPU/APU in M3/M5
 - [ ] PR M2 ready. Create `m3-ppu`.
 
 ### M3 — First frame (Phases 3, 4)
@@ -181,6 +181,10 @@ the docs, test-harness surprises.
 - 2026-11-17 [cpu] **Spec bug found by proof:** JSR reads the target high byte *after* pushing PCH/PCL. With JSR at `$01FC`, SP=`$FE`, the PCH push overwrites the operand byte `$01FE`; `Isa.exec` used the stale byte. Random Harte cases never hit it. Fixed in `Isa.exec`.
 - 2026-11-17 [proofs] T-REF-1 suffix tactics: wrap each cycle as its own `ms.cycle m = (ms', m')` fact + `runInstr_cyc` (unfolding several cycles with `runInstr_succ` explodes); `runInstr 7` in one simp times out; case-split PLA/PLP before the big simp; keep programs as literal `#[...]` in `hu` (an `abbrev` blocks `Array.getD` reduction); `show f + 2 = f + 1 + 1 from rfl` when Lean normalised the fuel. ROL/ROR/RRA/ISC need `State.c`/`State.getBit` in the simp set; BRK needs `State.setI`/`setBit`.
 - 2026-11-17 [proofs] `T_REF_1` depends on one `_native.bv_decide` axiom through `Nes.UInt16.ofLoHi_lo_hi` (Bits); everything else in T-REF-1 is standard axioms only. Replacing that one lemma's proof would make T-REF-1 fully kernel-checked.
+- 2026-11-17 [tests] blargg vs SingleStepTests disagree on unstable `$AB` (LAX/ATX #imm): blargg expects `A,X := #imm` (magic $FF), Harte `(A|$EE) & #imm`. Per PLAN §10.3 we follow Harte; `all_instrs.nes`, `03-immediate.nes`, `nes_cpu_test5/cpu.nes` are excluded from the blargg run list for that reason only.
+- 2026-11-17 [tests] Crude PPU timing in `Test/Blargg.lean`: 2 PPU dots before the CPU bus access and 1 after (`ppuPre := 2`) — 3 breaks cpu_interrupts test 3, 1 breaks test 2. Useful prior for the real `stepCycle` ordering in M4.
+- 2026-11-17 [tests] blargg harness: MMC1 ignores serial writes on consecutive cycles; `$81` handled by asserting RESET ~200k cycles later; ROMs without the `$6000` protocol are judged by nametable text. Test-exe -O3 C compile of `Test.Blargg` ~3 min; full blargg list runs ~33 s.
+- 2026-11-17 [proofs] T-CPU-7 tactics: don't unfold `IntState.sampleCycle` in multi-cycle `Core` runs — use field lemmas (`sc_nmiPending`, `vf_fst`, `boundary_cpu/pos`); leaving `pushOp` out of simp makes it time out; illegal RMW (ind),Y/(ind,X) are 8 cycles (the 8-cycle boundary bound needs a separate RMW case); no `interval_cases` without Mathlib — use an `omega` disjunction.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -189,6 +193,7 @@ the docs, test-harness surprises.
 - 2026-11-17 The product is the native binary from Lean's C backend with `-O3`; hot-path rules in PLAN.md §4 apply from M1 (PLAN.md §10 decision 6).
 - 2026-11-17 T-CPU-8 is proved by `simp` + `decide` over a universally quantified memory rather than kernel `decide` on a concrete 64 KiB memory (infeasible in the kernel). The statement is stronger than the plan's (holds for every memory agreeing with the case).
 - 2026-11-17 Spec-vs-hardware mismatch (JSR operand read order) found by the T-REF-1 proof rather than a test: fixed the spec (`Isa.exec`) per the loop rule; T-CPU-6's direct JSR;RTS theorem gained two no-overlap hypotheses (the general form is unchanged).
+- 2026-11-17 Unstable opcode `$AB`: SingleStepTests behaviour kept (PLAN §10.3) over blargg's; the three blargg ROMs that test it are excluded from the run list.
 
 ## Tick log (keep the last 20 lines only)
 _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
@@ -206,3 +211,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M2  Interrupts logic; Micro (41 uops) passes 2,560,000/2,560,000 Harte cases incl. exact bus traces and Isa agreement; trace runner in lake test
 - 2026-11-17  M2  T-CPU-6 (6 thms); interrupts wired in Cpu.Core (18/18 scenarios); T-REF-1 framework + 13 prefixes + 4/15 classes (160/256 opcodes); 77 theorems
 - 2026-11-17  M2  T-REF-1 CLOSED for all 256 opcodes (15 classes); proof exposed and fixed an Isa JSR bug; 90 theorems in registry
+- 2026-11-17  M2  T-CPU-7 (11 thms; latency + mid-BRK hijack open); blargg CPU suites 28/28 in lake test; full sweeps green after JSR fix; 101 theorems
