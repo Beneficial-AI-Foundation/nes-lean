@@ -17,3 +17,5 @@ import Nes.Cpu.Proofs.Interrupts
 import Nes.Cpu.Proofs.InterruptsHijack
 import Nes.Cpu.Proofs.InterruptsLatency
 import Nes.Cart.Mirroring
+import Nes.Input.Controller
+import Nes.Input.Proofs.Controller
