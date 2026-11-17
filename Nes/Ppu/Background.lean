@@ -110,32 +110,74 @@ is off the bus holds `v` — both are the integrator's choice. -/
     else ptAddr s (p ≥ 6)
   else ntAddr s.v
 
+namespace Bg
+
+/-- The four background shifters after this dot's shift (dots 2–257, 322–337) and reload (dots
+9, 17, …, 257, 329, 337: phase 0, after the shift), packed `patLo ||| patHi << 16 |||
+attrLo << 32 ||| attrHi << 48` (out of line and scalar-valued: see `bgDot`). -/
+@[noinline] def shifters (s : State) : UInt64 :=
+  let d := s.dot
+  let p := (d - 1) &&& 7
+  let sh := (2 ≤ d && d ≤ 257) || (322 ≤ d && d ≤ 337)
+  let pl := if sh then s.bgPatLo <<< 1 else s.bgPatLo
+  let ph := if sh then s.bgPatHi <<< 1 else s.bgPatHi
+  let al := if sh then s.bgAttrLo <<< 1 else s.bgAttrLo
+  let ah := if sh then s.bgAttrHi <<< 1 else s.bgAttrHi
+  let rl := p == 0 && ((9 ≤ d && d ≤ 257) || d == 329 || d == 337)
+  let pl := if rl then (pl &&& 0xFF00) ||| s.bgNextLo.toUInt16 else pl
+  let ph := if rl then (ph &&& 0xFF00) ||| s.bgNextHi.toUInt16 else ph
+  let al := if rl then (al &&& 0xFF00) ||| (if s.bgNextAttr &&& 1 != 0 then 0xFF else 0) else al
+  let ah := if rl then (ah &&& 0xFF00) ||| (if s.bgNextAttr &&& 2 != 0 then 0xFF else 0) else ah
+  pl.toUInt64 ||| (ph.toUInt64 <<< 16) ||| (al.toUInt64 <<< 32) ||| (ah.toUInt64 <<< 48)
+
+/-- The fetch latches after this dot's fetch (first dot of each 2-dot slot; dots 337/339 are
+nametable fetches) and `v` after this dot's loopy updates, packed `nextTile ||| nextAttr << 8 |||
+nextLo << 16 ||| nextHi << 24 ||| v << 32`. The fetch address `ppuAddrBg s` only depends on
+fields the shift/reload leave alone, and the fetch leaves `v`/`t` alone, so all three read `s`. -/
+@[specialize, noinline] def fetchV (rd : UInt16 → UInt8) (s : State) : UInt64 :=
+  let d := s.dot
+  let p := (d - 1) &&& 7
+  let base : UInt32 := s.bgNextTile.toUInt32 ||| (s.bgNextAttr.toUInt32 <<< 8) |||
+    (s.bgNextLo.toUInt32 <<< 16) ||| (s.bgNextHi.toUInt32 <<< 24)
+  let nx : UInt32 :=
+    if fetchDot d then
+      if p == 0 then (base &&& (0xFFFFFF00 : UInt32)) ||| (rd (ppuAddrBg s)).toUInt32
+      else if p == 2 then
+        (base &&& (0xFFFF00FF : UInt32)) ||| ((atSelect s.v (rd (ppuAddrBg s))).toUInt32 <<< 8)
+      else if p == 4 then (base &&& (0xFF00FFFF : UInt32)) ||| ((rd (ppuAddrBg s)).toUInt32 <<< 16)
+      else if p == 6 then (base &&& (0x00FFFFFF : UInt32)) ||| ((rd (ppuAddrBg s)).toUInt32 <<< 24)
+      else base
+    else if d == 337 || d == 339 then
+      (base &&& (0xFFFFFF00 : UInt32)) ||| (rd (ppuAddrBg s)).toUInt32
+    else base
+  let v := s.v
+  let v := if fetchDot d && p == 7 then Loopy.incX v else v
+  let v := if d == 256 then Loopy.incY v else v
+  let v := if d == 257 then Loopy.copyX v s.t else v
+  let v := if s.scanline == 261 && 280 ≤ d && d ≤ 304 then Loopy.copyY v s.t else v
+  nx.toUInt64 ||| (v.toUInt64 <<< 32)
+
+end Bg
+
 /-- Background work for the current `(scanline, dot)`, before the timing tick (see the module
-ordering contract). `rd` reads PPU address space (`$0000`–`$3FFF`). -/
+ordering contract). `rd` reads PPU address space (`$0000`–`$3FFF`). In order: shift (dots 2–257,
+322–337), reload (phase 0 of dots 9–257, 329, 337), fetch (`Bg.fetchV`), loopy updates (coarse X
+at phase 7 of fetch dots, Y at 256, copy X at 257, copy Y on pre-render 280–304).
+
+Performance shape: the branchy work is computed as packed scalars by out-of-line helpers
+(`Bg.shifters`, `Bg.fetchV`) and the state is updated once, on a straight-line path, so the
+compiler updates `s` in place (an update after branches lands in a join point, where Lean's
+reset/reuse does not look, and allocated a fresh `State` per dot). -/
 @[specialize] def bgDot (rd : UInt16 → UInt8) (s : State) : State :=
   if !(s.rendering && activeLine s.scanline) then s
   else
-    let d := s.dot
-    -- shift: dots 2–257 and 322–337
-    let s := if (2 ≤ d && d ≤ 257) || (322 ≤ d && d ≤ 337) then bgShift s else s
-    let p := (d - 1) &&& 7
-    -- reload: dots 9, 17, …, 257 and 329, 337 (phase 0, after the shift)
-    let s := if p == 0 && ((9 ≤ d && d ≤ 257) || d == 329 || d == 337) then bgReload s else s
-    -- fetch (first dot of each 2-dot slot); dots 337/339 are nametable fetches
-    let s :=
-      if fetchDot d then
-        if p == 0 then { s with bgNextTile := rd (ppuAddrBg s) }
-        else if p == 2 then { s with bgNextAttr := atSelect s.v (rd (ppuAddrBg s)) }
-        else if p == 4 then { s with bgNextLo := rd (ppuAddrBg s) }
-        else if p == 6 then { s with bgNextHi := rd (ppuAddrBg s) }
-        else s
-      else if d == 337 || d == 339 then { s with bgNextTile := rd (ppuAddrBg s) }
-      else s
-    -- loopy updates
-    let s := if fetchDot d && p == 7 then { s with v := Loopy.incX s.v } else s
-    let s := if d == 256 then { s with v := Loopy.incY s.v } else s
-    let s := if d == 257 then { s with v := Loopy.copyX s.v s.t } else s
-    if s.scanline == 261 && 280 ≤ d && d ≤ 304 then { s with v := Loopy.copyY s.v s.t } else s
+    let sh := Bg.shifters s
+    let nx := Bg.fetchV rd s
+    { s with bgPatLo := sh.toUInt16, bgPatHi := (sh >>> 16).toUInt16,
+             bgAttrLo := (sh >>> 32).toUInt16, bgAttrHi := (sh >>> 48).toUInt16,
+             bgNextTile := nx.toUInt8, bgNextAttr := (nx >>> 8).toUInt8,
+             bgNextLo := (nx >>> 16).toUInt8, bgNextHi := (nx >>> 24).toUInt8,
+             v := (nx >>> 32).toUInt16 }
 
 /-- Unmasked background pixel: `attr·4 + pattern` at shifter bit `15 - x` (0 if the pattern bits
 are 0). -/
