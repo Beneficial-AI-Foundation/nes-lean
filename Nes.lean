@@ -14,3 +14,4 @@ import Nes.Cpu.Proofs.Stack
 import Nes.Cpu.Core
 import Nes.Cpu.Proofs.Refinement
 import Nes.Cpu.Proofs.Interrupts
+import Nes.Cpu.Proofs.InterruptsHijack
