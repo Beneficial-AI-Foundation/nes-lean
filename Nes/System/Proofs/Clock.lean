@@ -226,6 +226,49 @@ theorem cpuCycle_split (n : Nes) : ∃ m, PosEq n m ∧ PosEq m.ppuDot n.cpuCycl
     refine ⟨_, ?_, by rw [ppuDots_one]; exact ⟨rfl, rfl, rfl, rfl, rfl⟩⟩
     exact h.trans ⟨rfl, rfl, rfl, rfl, rfl⟩
 
+theorem stallRead_split (n : Nes) (first : Bool) :
+    ∃ m, PosEq n m ∧ PosEq m.ppuDot (n.stallRead first) := by
+  unfold Nes.stallRead
+  split
+  · rename_i a _
+    split
+    · exact ⟨n, .refl _, by rw [ppuDots_one]; exact .refl _⟩
+    · have h := cpuRead_pos n a
+      generalize n.cpuRead a = r at h
+      obtain ⟨m, v⟩ := r
+      dsimp only at h ⊢
+      refine ⟨_, ?_, by rw [ppuDots_one]; exact .refl _⟩
+      exact h.trans ⟨rfl, rfl, rfl, rfl, rfl⟩
+  · exact ⟨n, .refl _, by rw [ppuDots_one]; exact .refl _⟩
+
+theorem dmcCycle_split (n : Nes) : ∃ m, PosEq n m ∧ PosEq m.ppuDot n.dmcCycle := by
+  unfold Nes.dmcCycle
+  dsimp only
+  split
+  · have h := cpuRead_pos n n.apu.dmc.dmaAddr
+    generalize n.cpuRead n.apu.dmc.dmaAddr = r at h
+    obtain ⟨m, v⟩ := r
+    dsimp only at h ⊢
+    refine ⟨_, ?_, by rw [ppuDots_one]; exact .refl _⟩
+    exact h.trans ⟨rfl, rfl, rfl, rfl, rfl⟩
+  split
+  · split
+    · obtain ⟨m, h1, h2⟩ := dmaCycle_split { n with dmcLeft := n.dmcLeft - 1 }
+      exact ⟨m, PosEq.trans (by constructor <;> rfl) h1, h2⟩
+    · obtain ⟨m, h1, h2⟩ := stallRead_split { n with dmcLeft := n.dmcLeft - 1 } false
+      exact ⟨m, PosEq.trans (by constructor <;> rfl) h1, h2⟩
+  split
+  · exact ⟨{ n with dmcAlign := false }, ⟨rfl, rfl, rfl, rfl, rfl⟩,
+      by rw [ppuDots_one]; exact .refl _⟩
+  split
+  · obtain ⟨m, h1, h2⟩ := dmaCycle_split { n with dmcLeft := Apu.Dmc.dmaStall (!n.clkOdd) false false - 1 }
+    exact ⟨m, PosEq.trans (by constructor <;> rfl) h1, h2⟩
+  split
+  · obtain ⟨m, h1, h2⟩ :=
+      stallRead_split { n with dmcLeft := Apu.Dmc.dmaStall (!n.clkOdd) false false - 1 } true
+    exact ⟨m, PosEq.trans (by constructor <;> rfl) h1, h2⟩
+  · exact cpuCycle_split n
+
 /-! ### One CPU cycle -/
 
 /-- One `stepCycle` for the position: `+3` dots, or the frame wrapped during the cycle (at most
@@ -248,26 +291,39 @@ theorem cycStep_of_dots {a b c d : Nes} (h1 : DotStep a b) (h2 : DotStep b c) (h
 theorem latchReset_pos (n : Nes) : PosEq n n.latchReset := by
   unfold Nes.latchReset; split <;> exact ⟨rfl, rfl, rfl, rfl, rfl⟩
 
-/-- The body of a cycle before the clock tick (from the state after the RESET latch). -/
+theorem apuTick_pos (n : Nes) : PosEq n n.apuTick := ⟨rfl, rfl, rfl, rfl, rfl⟩
+
+/-- The body of a cycle before the clock tick (from the state after the RESET latch): the
+branch is decided after the `preDots` dots, before the APU tick. -/
 def body (n : Nes) : Nes :=
-  if (Nes.ppuDots preDots n).dma.active then (Nes.ppuDots preDots n).dmaCycle
-  else (Nes.ppuDots preDots n).cpuCycle
+  if (Nes.ppuDots preDots n).dmcBusy then (Nes.ppuDots preDots n).apuTick.dmcCycle
+  else if (Nes.ppuDots preDots n).dma.active then (Nes.ppuDots preDots n).apuTick.dmaCycle
+  else (Nes.ppuDots preDots n).apuTick.cpuCycle
 
 /-- `stepCycle` is `tick ∘ body ∘ latchReset`. -/
 theorem stepCycle_eq (n : Nes) : Nes.stepCycle n = (body n.latchReset).tick := by
   unfold Nes.stepCycle body Nes.cpuCycle
   dsimp only
-  cases (Nes.ppuDots preDots n.latchReset).dma.active
-  · cases (Nes.ppuDots preDots n.latchReset).cpu.busOp <;> rfl
+  cases (Nes.ppuDots preDots n.latchReset).dmcBusy
+  · cases (Nes.ppuDots preDots n.latchReset).dma.active
+    · cases (Nes.ppuDots preDots n.latchReset).apuTick.cpu.busOp <;> rfl
+    · rfl
   · rfl
 
 theorem tick_clock (n : Nes) : n.tick.clock = n.clock.tick := rfl
 
 theorem body_split (n : Nes) : ∃ m, PosEq n.ppuDot.ppuDot m ∧ PosEq m.ppuDot (body n) := by
+  have lift : ∀ (f : Nes → Nes), (∀ x, ∃ m, PosEq x m ∧ PosEq m.ppuDot (f x)) →
+      ∃ m, PosEq n.ppuDot.ppuDot m ∧ PosEq m.ppuDot (f n.ppuDot.ppuDot.apuTick) := by
+    intro f hf
+    obtain ⟨m, h1, h2⟩ := hf n.ppuDot.ppuDot.apuTick
+    exact ⟨m, (apuTick_pos _).trans h1, h2⟩
   unfold body
   split
-  · exact dmaCycle_split _
-  · exact cpuCycle_split _
+  · exact lift _ dmcCycle_split
+  split
+  · exact lift _ dmaCycle_split
+  · exact lift _ cpuCycle_split
 
 theorem ppuDot_clock (m : Nes) : m.ppuDot.clock = m.clock := rfl
 

@@ -236,28 +236,61 @@ step (`src` = the RAM bytes), the CPU core is not clocked, RAM is untouched. -/
 theorem latchReset_of (n : Nes) (h : n.resetLine = false) : n.latchReset = n := by
   simp [Nes.latchReset, h]
 
+/-- The DMC DMA unit is idle and stays so: no fetch under way, no OAM realignment pending, and
+no sample playing (`bytesRemaining = 0`, so the DMC never requests a fetch). -/
+structure DmcIdle (n : Nes) : Prop where
+  left : n.dmcLeft = 0
+  align : n.dmcAlign = false
+  bytes : n.apu.dmc.bytesRemaining = 0
+
+theorem DmcIdle.busy {n : Nes} (h : DmcIdle n) : n.dmcBusy = false := by
+  unfold Nes.dmcBusy Apu.Dmc.dmaRequest
+  rw [h.left, h.align, h.bytes]; simp
+
+theorem dmc_tick_bytes (d : Apu.Dmc) : d.tick.bytesRemaining = d.bytesRemaining := by
+  unfold Apu.Dmc.tick Apu.Dmc.clockOutput; split <;> rfl
+
+theorem apuStep_bytes (a : Apu.Apu) :
+    (Nes.apuStep a).dmc.bytesRemaining = a.dmc.bytesRemaining := by
+  unfold Nes.apuStep Apu.Apu.tick
+  dsimp only
+  split
+  · exact dmc_tick_bytes _
+  · exact dmc_tick_bytes _
+
+theorem cpuWrite_2004_dmc (n : Nes) (v : UInt8) :
+    (n.cpuWrite 0x2004 v).apu = n.apu ∧ (n.cpuWrite 0x2004 v).dmcLeft = n.dmcLeft ∧
+      (n.cpuWrite 0x2004 v).dmcAlign = n.dmcAlign := by
+  simp [Nes.cpuWrite, State.cpuWrite, State.writeOamData]
+
 theorem stepCycle_dma (n : Nes) (src : UInt16 → UInt8) (hrst : n.resetLine = false)
-    (hact : n.dma.active = true)
+    (hact : n.dma.active = true) (hdmc : DmcIdle n)
     (hp : n.dma.page < 0x20) (hsrc : ∀ a, a < 0x2000 → src a = (n.cpuRead a).2) :
     view (Nes.stepCycle n) = (view n).step src ∧ (Nes.stepCycle n).ram = n.ram ∧
-      (Nes.stepCycle n).cpu = n.cpu := by
+      (Nes.stepCycle n).cpu = n.cpu ∧ DmcIdle (Nes.stepCycle n) := by
   have d1 := ppuDot_dma n
   have d2 := ppuDot_dma n.ppuDot
   have hact2 : (Nes.ppuDots preDots n).dma.active = true := hact
+  have hbusy2 : (Nes.ppuDots preDots n).dmcBusy = false := hdmc.busy
   rw [stepCycle_eq, latchReset_of n hrst]
   unfold body
-  simp only [hact2, ite_true]
-  show view (Nes.ppuDot (Nes.ppuDot n)).dmaCycle = _ ∧ (Nes.ppuDot (Nes.ppuDot n)).dmaCycle.ram = _ ∧
-    (Nes.ppuDot (Nes.ppuDot n)).dmaCycle.cpu = _
+  simp only [hbusy2, hact2, Bool.false_eq_true, ite_true, ite_false]
+  show view (Nes.ppuDot (Nes.ppuDot n)).apuTick.dmaCycle = _ ∧
+    (Nes.ppuDot (Nes.ppuDot n)).apuTick.dmaCycle.ram = _ ∧
+    (Nes.ppuDot (Nes.ppuDot n)).apuTick.dmaCycle.cpu = _ ∧
+    DmcIdle (Nes.ppuDot (Nes.ppuDot n)).apuTick.dmaCycle.tick
   unfold view
-  have ho : n.ppuDot.ppuDot.ppu.oam = n.ppu.oam := by rw [d2.1, d1.1]
-  have hoa : n.ppuDot.ppuDot.ppu.oamAddr = n.ppu.oamAddr := by rw [d2.2.1, d1.2.1]
-  have hd : n.ppuDot.ppuDot.dma = n.dma := rfl
-  have hram : n.ppuDot.ppuDot.ram = n.ram := rfl
-  have hcpu : n.ppuDot.ppuDot.cpu = n.cpu := rfl
-  have hsrc' : ∀ a, a < 0x2000 → src a = (n.ppuDot.ppuDot.cpuRead a).2 := fun a h =>
+  have ho : n.ppuDot.ppuDot.apuTick.ppu.oam = n.ppu.oam := by rw [← d1.1, ← d2.1]; rfl
+  have hoa : n.ppuDot.ppuDot.apuTick.ppu.oamAddr = n.ppu.oamAddr := by
+    rw [← d1.2.1, ← d2.2.1]; rfl
+  have hd : n.ppuDot.ppuDot.apuTick.dma = n.dma := rfl
+  have hram : n.ppuDot.ppuDot.apuTick.ram = n.ram := rfl
+  have hcpu : n.ppuDot.ppuDot.apuTick.cpu = n.cpu := rfl
+  have hidle : DmcIdle n.ppuDot.ppuDot.apuTick :=
+    ⟨hdmc.left, hdmc.align, (apuStep_bytes _).trans hdmc.bytes⟩
+  have hsrc' : ∀ a, a < 0x2000 → src a = (n.ppuDot.ppuDot.apuTick.cpuRead a).2 := fun a h =>
     (hsrc a h).trans (cpuRead_ram_eq _ _ a h hram).symm
-  generalize n.ppuDot.ppuDot = m at ho hoa hd hram hcpu hsrc' ⊢
+  generalize n.ppuDot.ppuDot.apuTick = m at ho hoa hd hram hcpu hsrc' hidle ⊢
   rw [← hd] at hp hact
   rw [← hd, ← ho, ← hoa, ← hram, ← hcpu]
   unfold Nes.dmaCycle DmaView.step
@@ -267,7 +300,7 @@ theorem stepCycle_dma (n : Nes) (src : UInt16 → UInt8) (hrst : n.resetLine = f
     rw [ppuDots_one]
     have d3 := ppuDot_dma { m with dma := m.dma.complete 0 }
     rw [d3.1, d3.2.1, d3.2.2.1, d3.2.2.2.1, d3.2.2.2.2.1]
-    exact ⟨rfl, rfl, rfl⟩
+    exact ⟨rfl, rfl, rfl, hidle.1, hidle.2, hidle.3⟩
   · have hlt := op_read_lt _ hp hact a hop
     have r := cpuRead_ram m a hlt
     have hv := hsrc' a hlt
@@ -275,55 +308,78 @@ theorem stepCycle_dma (n : Nes) (src : UInt16 → UInt8) (hrst : n.resetLine = f
     rw [r.1, ← hv, ppuDots_one]
     have d3 := ppuDot_dma { m with bus := m.bus.latch (src a), dma := m.dma.complete (src a) }
     rw [d3.1, d3.2.1, d3.2.2.1, d3.2.2.2.1, d3.2.2.2.2.1]
-    exact ⟨rfl, rfl, rfl⟩
+    exact ⟨rfl, rfl, rfl, hidle.1, hidle.2, hidle.3⟩
   · dsimp only
     have w := cpuWrite_2004 m v
+    have w' := cpuWrite_2004_dmc m v
     rw [ppuDots_one]
-    generalize m.cpuWrite 0x2004 v = mw at w
+    generalize m.cpuWrite 0x2004 v = mw at w w'
     have d3 := ppuDot_dma { mw with bus := mw.bus.latch v, dma := mw.dma.complete v }
-    rw [d3.1, d3.2.1, d3.2.2.1, d3.2.2.2.1, d3.2.2.2.2.1]
-    dsimp only
-    rw [w.1, w.2.1, w.2.2.1, w.2.2.2.1, w.2.2.2.2]
-    exact ⟨rfl, rfl, rfl⟩
+    have e3 : mw.apu.dmc.bytesRemaining = 0 := by rw [w'.1]; exact hidle.3
+    have idle : DmcIdle ({ mw with bus := mw.bus.latch v, dma := mw.dma.complete v }.ppuDot.tick) :=
+      ⟨w'.2.1.trans hidle.1, w'.2.2.trans hidle.2, e3⟩
+    refine ⟨?_, ?_, ?_, idle⟩
+    · rw [d3.1, d3.2.1, d3.2.2.1]; dsimp only; rw [w.1, w.2.1, w.2.2.1]
+    · rw [d3.2.2.2.1]; exact w.2.2.2.1
+    · rw [d3.2.2.2.2.1]; exact w.2.2.2.2
 
 theorem dma_run (j : Nat) (n1 : Nes) (src : UInt16 → UInt8) (hrst : n1.resetLine = false)
     (hsrc : ∀ a, a < 0x2000 → src a = (n1.cpuRead a).2) (hp : n1.dma.page < 0x20)
-    (hact : ∀ i < j, (DmaView.run src i (view n1)).dma.active = true) :
+    (hact : ∀ i < j, (DmaView.run src i (view n1)).dma.active = true) (hdmc : DmcIdle n1) :
     view (Nes.runCycles j n1) = DmaView.run src j (view n1) ∧
       (Nes.runCycles j n1).ram = n1.ram ∧ (Nes.runCycles j n1).cpu = n1.cpu := by
   induction j generalizing n1 with
   | zero => exact ⟨rfl, rfl, rfl⟩
   | succ j ih =>
-    have s := stepCycle_dma n1 src hrst (hact 0 (by omega)) hp hsrc
+    have s := stepCycle_dma n1 src hrst (hact 0 (by omega)) hdmc hp hsrc
     have hpage : (Nes.stepCycle n1).dma.page = n1.dma.page := by
       have := congrArg (fun x => x.dma.page) s.1
       simp only [view] at this; rw [this]; exact (step_dma src _).2
     have r := ih (Nes.stepCycle n1) (by rw [stepCycle_resetLine]; exact hrst)
       (fun a h => (hsrc a h).trans (cpuRead_ram_eq _ _ a h s.2.1).symm)
       (by rw [hpage]; exact hp)
-      (fun i hi => by rw [s.1]; exact hact (i + 1) (by omega))
-    rw [runCycles_succ, r.1, r.2.1, r.2.2, s.1, s.2.1, s.2.2]
+      (fun i hi => by rw [s.1]; exact hact (i + 1) (by omega)) s.2.2.2
+    rw [runCycles_succ, r.1, r.2.1, r.2.2, s.1, s.2.1, s.2.2.1]
     exact ⟨rfl, rfl, rfl⟩
 
-/-- The `$4014` write cycle arms the DMA unit (`OamDma.start`, parity of that cycle). -/
+theorem cpuWrite_4014_dmc (n : Nes) (v : UInt8) :
+    (n.cpuWrite 0x4014 v).apu = n.apu ∧ (n.cpuWrite 0x4014 v).dmcLeft = n.dmcLeft ∧
+      (n.cpuWrite 0x4014 v).dmcAlign = n.dmcAlign := by
+  simp [Nes.cpuWrite]
+
+/-- The `$4014` write cycle arms the DMA unit (`OamDma.start`, parity of that cycle); the DMC
+DMA unit stays idle. -/
 theorem write4014 (n : Nes) (p : UInt8) (hrst : n.resetLine = false)
-    (hop : n.cpu.busOp = .write 0x4014 p) (hidle : n.dma.active = false) :
-    (Nes.stepCycle n).dma = n.dma.start p n.clock.cpuOdd := by
+    (hop : n.cpu.busOp = .write 0x4014 p) (hidle : n.dma.active = false) (hdmc : DmcIdle n) :
+    (Nes.stepCycle n).dma = n.dma.start p n.clock.cpuOdd ∧ DmcIdle (Nes.stepCycle n) := by
   have hidle2 : (Nes.ppuDots preDots n).dma.active = false := hidle
-  have hop2 : (Nes.ppuDots preDots n).cpu.busOp = .write 0x4014 p := hop
+  have hbusy2 : (Nes.ppuDots preDots n).dmcBusy = false := hdmc.busy
+  have hop2 : (Nes.ppuDots preDots n).apuTick.cpu.busOp = .write 0x4014 p := hop
   rw [stepCycle_eq, latchReset_of n hrst]
   unfold body
-  simp only [hidle2, Bool.false_eq_true, ite_false]
-  show (Nes.cpuCycle (Nes.ppuDots preDots n)).dma = _
+  simp only [hidle2, hbusy2, Bool.false_eq_true, ite_false]
+  show (Nes.cpuCycle (Nes.ppuDots preDots n).apuTick).dma = _ ∧
+    DmcIdle (Nes.cpuCycle (Nes.ppuDots preDots n).apuTick).tick
   unfold Nes.cpuCycle
   rw [hop2]
   dsimp only
   rw [ppuDots_one]
-  show (n.ppuDot.ppuDot.cpuWrite 0x4014 p).dma = _
-  rw [cpuWrite_4014]; rfl
+  have w := cpuWrite_4014_dmc (Nes.ppuDots preDots n).apuTick p
+  refine ⟨?_, ?_⟩
+  · show (n.ppuDot.ppuDot.apuTick.cpuWrite 0x4014 p).dma = _
+    rw [cpuWrite_4014]; rfl
+  · have e1 : ((Nes.ppuDots preDots n).apuTick.cpuWrite 0x4014 p).dmcLeft = 0 :=
+      w.2.1.trans hdmc.left
+    have e2 : ((Nes.ppuDots preDots n).apuTick.cpuWrite 0x4014 p).dmcAlign = false :=
+      w.2.2.trans hdmc.align
+    have e3 : ((Nes.ppuDots preDots n).apuTick.cpuWrite 0x4014 p).apu.dmc.bytesRemaining = 0 := by
+      rw [w.1]; exact (apuStep_bytes _).trans hdmc.bytes
+    generalize (Nes.ppuDots preDots n).apuTick.cpuWrite 0x4014 p = cw at e1 e2 e3 ⊢
+    exact ⟨e1, e2, e3⟩
 
 /-- **T-SYS-2 (OAM DMA postcondition).** Let the CPU's bus operation be the write `$4014 ← p`
-(DMA idle), with the source page in work RAM (`p < $20`). After that cycle (`n1`):
+(DMA idle; the DMC DMA idle with no sample playing, `DmcIdle` — a DMC fetch would steal
+cycles), with the source page in work RAM (`p < $20`). After that cycle (`n1`):
 * the DMA unit runs for exactly `L = 513` cycles if the write landed on an even CPU cycle, `514`
   if odd; during them the CPU core is halted (unchanged), after them the DMA is idle;
 * OAM holds the 256 bytes read through the CPU bus (`cpuRead`) from `p·256 + i`, written from
@@ -332,7 +388,7 @@ theorem write4014 (n : Nes) (p : UInt8) (hrst : n.resetLine = false)
 * the clock ticked `L` times: the PPU advanced `3 · L` dots (T-SYS-1).
 -/
 theorem T_SYS_2_oam_dma (n : Nes) (p : UInt8) (hp : p < 0x20) (hrst : n.resetLine = false)
-    (hop : n.cpu.busOp = .write 0x4014 p) (hidle : n.dma.active = false) :
+    (hop : n.cpu.busOp = .write 0x4014 p) (hidle : n.dma.active = false) (hdmc : DmcIdle n) :
     let L := if n.clock.cpuOdd then 514 else 513
     let n1 := Nes.stepCycle n
     let m := Nes.runCycles L n1
@@ -343,7 +399,8 @@ theorem T_SYS_2_oam_dma (n : Nes) (p : UInt8) (hp : p < 0x20) (hrst : n.resetLin
       m.ppu.oamAddr = n1.ppu.oamAddr ∧
       m.clock = ticks L n1.clock ∧ m.clock.ppuDots = n1.clock.ppuDots + 3 * L.toUInt64 := by
   intro L n1 m
-  have hd : n1.dma = n.dma.start p n.clock.cpuOdd := write4014 n p hrst hop hidle
+  have hw := write4014 n p hrst hop hidle hdmc
+  have hd : n1.dma = n.dma.start p n.clock.cpuOdd := hw.1
   have hrst1 : n1.resetLine = false := by
     show (Nes.stepCycle n).resetLine = false; rw [stepCycle_resetLine]; exact hrst
   have hview : view n1 = ⟨n.dma.start p n.clock.cpuOdd, n1.ppu.oam, n1.ppu.oamAddr⟩ := by
@@ -354,7 +411,7 @@ theorem T_SYS_2_oam_dma (n : Nes) (p : UInt8) (hp : p < 0x20) (hrst : n.resetLin
   rw [← hview] at mach
   have hpage : n1.dma.page < 0x20 := by rw [hd]; exact hp
   have run := fun j (hj : j ≤ L) => dma_run j n1 (fun a => (n1.cpuRead a).2) hrst1 (fun _ _ => rfl)
-    hpage (fun i hi => mach.1 i (by omega))
+    hpage (fun i hi => mach.1 i (by omega)) hw.2
   have fin := run L (Nat.le_refl _)
   have hclk := runCycles_clock L n1
   refine ⟨fun j hj => ⟨?_, (run j (by omega)).2.2⟩, ?_, fin.2.2, ?_, ?_, hclk, ?_⟩

@@ -271,7 +271,8 @@ def registry : List Name :=
   , `Nes.Apu.Proofs.T_APU_2_pulseTable
   , `Nes.Apu.Proofs.T_APU_2_tndTable
   , `Nes.Apu.Proofs.T_APU_2_pulseTable_err
-  , `Nes.Apu.Proofs.T_APU_2_tndTable_err ]
+  , `Nes.Apu.Proofs.T_APU_2_tndTable_err
+  , `Nes.System.Nes.runFrameAudio_fst ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

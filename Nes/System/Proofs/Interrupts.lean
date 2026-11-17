@@ -8,13 +8,14 @@ import Nes.Cpu.Proofs.InterruptsLatency
 ## Spec
 
 * `cpuPre n`: the machine of one `stepCycle` just before the CPU core completes the cycle —
-  after the RESET latch, all three PPU dots and the CPU's bus access — with the byte read or
-  written. `cycleLines n = (cpuPre n).1.lines`, `cycleData n = (cpuPre n).2`.
-* `T_SYS_4_step_cpu` (wiring of `stepCycle`): with no DMA running, the CPU core after a cycle is
+  after the RESET latch, all three PPU dots, the APU's tick and the CPU's bus access — with the
+  byte read or written. `cycleLines n = (cpuPre n).1.lines`, `cycleData n = (cpuPre n).2`.
+* `T_SYS_4_step_cpu` (wiring of `stepCycle`): with no DMA running (neither OAM DMA nor the DMC
+  DMA unit, `dmcBusy`), the CPU core after a cycle is
   `n.latchReset.cpu.complete (cycleLines n) (cycleData n)` — the lines handed to
   `Core.complete` are the lines of the machine *after the cycle's three dots*.
-* `T_SYS_4_irq_wiring`: those lines are `irq = cart.irq || apuIrq` (wired-OR; `apuIrq = false`
-  until M5, `T_SYS_4_apuIrq`), `nmi = ppu.nmiLine` (the PPU's `/NMI` output after the dots),
+* `T_SYS_4_irq_wiring`: those lines are `irq = cart.irq || apuIrq` (wired-OR; `apuIrq` = the
+  APU's frame/DMC IRQ, `T_SYS_4_apuIrq`), `nmi = ppu.nmiLine` (the PPU's `/NMI` output after the dots),
   `reset = false` (RESET goes through `latchReset`).
 * `T_SYS_4_cpu_projection`: with the RESET line low and no DMA active in the first `k`
   cycles, `(runCycles k n).cpu = coreRun (sysLines n) (sysData n) n.cpu k`: the system's CPU
@@ -64,7 +65,7 @@ def busAccess (n : Nes) : Nes × UInt8 :=
 /-- The machine of one cycle just before `Core.complete` (after the RESET latch, the `preDots`
 dots, the CPU's bus access with the open-bus latch, the remaining dot), and the byte read or
 written. Valid when no DMA runs (`stepCycle` then takes the CPU branch). -/
-def cpuPre (n : Nes) : Nes × UInt8 := busAccess (Nes.ppuDots preDots n.latchReset)
+def cpuPre (n : Nes) : Nes × UInt8 := busAccess (Nes.ppuDots preDots n.latchReset).apuTick
 
 /-- The interrupt lines the CPU core samples in the cycle starting from `n`. -/
 def cycleLines (n : Nes) : IntLines := (cpuPre n).1.lines
@@ -92,6 +93,9 @@ theorem cpuWrite_cpu (n : Nes) (a : UInt16) (v : UInt8) : (n.cpuWrite a v).cpu =
 theorem pre_dma (n : Nes) : (Nes.ppuDots preDots n.latchReset).dma = n.dma := by
   unfold Nes.latchReset; split <;> rfl
 
+theorem pre_dmcBusy (n : Nes) : (Nes.ppuDots preDots n.latchReset).dmcBusy = n.dmcBusy := by
+  unfold Nes.latchReset; split <;> rfl
+
 /-- `cpuCycle` completes the core with the lines of the machine after the bus access and the
 last dot. -/
 theorem cpuCycle_cpu (m : Nes) :
@@ -114,18 +118,20 @@ theorem cpuCycle_cpu (m : Nes) :
 /-- **T-SYS-4 (wiring of `stepCycle`).** With no DMA running, one system cycle completes the CPU
 core with the lines `cycleLines n` (the machine's lines after all three dots of the cycle and
 the bus access) and the bus byte `cycleData n`. -/
-theorem T_SYS_4_step_cpu (n : Nes) (hdma : n.dma.active = false) :
+theorem T_SYS_4_step_cpu (n : Nes) (hdma : n.dma.active = false) (hdmc : n.dmcBusy = false) :
     (Nes.stepCycle n).cpu = n.latchReset.cpu.complete (cycleLines n) (cycleData n) := by
   have h2 : (Nes.ppuDots preDots n.latchReset).dma.active = false := by rw [pre_dma]; exact hdma
+  have h3 : (Nes.ppuDots preDots n.latchReset).dmcBusy = false := by
+    rw [pre_dmcBusy]; exact hdmc
   rw [stepCycle_eq]
   show (body n.latchReset).cpu = _
   unfold body cycleLines cycleData cpuPre
-  simp only [h2, Bool.false_eq_true, ite_false]
+  simp only [h2, h3, Bool.false_eq_true, ite_false]
   rw [cpuCycle_cpu]
   rfl
 
-/-- The APU's IRQ output is not modelled yet (M5). -/
-theorem T_SYS_4_apuIrq (n : Nes) : n.apuIrq = false := rfl
+/-- The APU's IRQ output is the APU's (frame counter IRQ or DMC IRQ, `Apu.irq`). -/
+theorem T_SYS_4_apuIrq (n : Nes) : n.apuIrq = (n.apu.fc.irq || n.apu.dmc.irqFlag) := rfl
 
 /-- **T-SYS-4 (interrupt wiring).** The IRQ line the CPU samples in a cycle is the wired-OR of
 the mapper's and the APU's IRQ outputs, the NMI line is the PPU's `/NMI` output — both of the
@@ -133,12 +139,9 @@ machine after the cycle's three dots and bus access — and the RESET input is i
 through `latchReset`). -/
 theorem T_SYS_4_irq_wiring (n : Nes) :
     (cycleLines n).irq = ((cpuPre n).1.cart.irq || (cpuPre n).1.apuIrq) ∧
-      (cycleLines n).irq = (cpuPre n).1.cart.irq ∧
       (cycleLines n).nmi = (cpuPre n).1.ppu.nmiLine ∧
-      (cycleLines n).reset = false := by
-  refine ⟨rfl, ?_, rfl, rfl⟩
-  show ((cpuPre n).1.cart.irq || false) = _
-  simp
+      (cycleLines n).reset = false :=
+  ⟨rfl, rfl, rfl⟩
 
 /-- The machine `cpuPre` samples is the one after all three dots: the last dot is the final
 step of `cpuPre`. -/
@@ -175,21 +178,23 @@ theorem runCycles_resetLine (k : Nat) (n : Nes) :
   | succ k ih => rw [runCycles_succ', stepCycle_resetLine, ih]
 
 /-- One system cycle, RESET low, no DMA: the CPU completes with the induced lines and byte. -/
-theorem step_cpu (n : Nes) (hrst : n.resetLine = false) (hdma : n.dma.active = false) :
+theorem step_cpu (n : Nes) (hrst : n.resetLine = false) (hdma : n.dma.active = false)
+    (hdmc : n.dmcBusy = false) :
     (Nes.stepCycle n).cpu = n.cpu.complete (cycleLines n) (cycleData n) := by
-  rw [T_SYS_4_step_cpu n hdma, latchReset_of n hrst]
+  rw [T_SYS_4_step_cpu n hdma hdmc, latchReset_of n hrst]
 
 /-- **T-SYS-4 (CPU projection).** With the RESET line low and no DMA active during the first
 `k` cycles, the system's CPU after `k` cycles is the CPU core driven by the line schedule and
 bus-data stream the machine induces. -/
 theorem T_SYS_4_cpu_projection (n : Nes) (k : Nat) (hrst : n.resetLine = false)
-    (hdma : ∀ i, i < k → (Nes.runCycles i n).dma.active = false) :
+    (hdma : ∀ i, i < k → (Nes.runCycles i n).dma.active = false)
+    (hdmc : ∀ i, i < k → (Nes.runCycles i n).dmcBusy = false) :
     (Nes.runCycles k n).cpu = coreRun (sysLines n) (sysData n) n.cpu k := by
   induction k with
   | zero => rfl
   | succ k ih =>
-    rw [runCycles_succ', step_cpu _ (by rw [runCycles_resetLine]; exact hrst) (hdma k (by omega)),
-      ih (fun i hi => hdma i (by omega))]
+    rw [runCycles_succ', step_cpu _ (by rw [runCycles_resetLine]; exact hrst) (hdma k (by omega))
+      (hdmc k (by omega)), ih (fun i hi => hdma i (by omega)) (fun i hi => hdmc i (by omega))]
     rfl
 
 /-- The byte of a write cycle is the written byte. -/
@@ -197,8 +202,8 @@ theorem cycleData_write (n : Nes) (hrst : n.resetLine = false) (a : UInt16) (v :
     (h : n.cpu.busOp = .write a v) : cycleData n = v := by
   unfold cycleData cpuPre busAccess
   rw [latchReset_of n hrst]
-  have hc : (Nes.ppuDots preDots n).cpu = n.cpu := rfl
-  generalize Nes.ppuDots preDots n = m at hc
+  have hc : (Nes.ppuDots preDots n).apuTick.cpu = n.cpu := rfl
+  generalize (Nes.ppuDots preDots n).apuTick = m at hc
   rw [hc]
   split
   · rename_i h'; rw [h] at h'; cases h'
@@ -215,6 +220,7 @@ a schedule `ls` and every byte the CPU reads from the system agrees with the fla
 theorem T_SYS_4_cpu_projection_mem (n : Nes) (ls : Nat → IntLines) (m : Mem) (k : Nat)
     (hrst : n.resetLine = false)
     (hdma : ∀ i, i < k → (Nes.runCycles i n).dma.active = false)
+    (hdmc : ∀ i, i < k → (Nes.runCycles i n).dmcBusy = false)
     (hl : ∀ i, i < k → sysLines n i = ls i)
     (hd : ∀ i, i < k → ∀ a, (runSched i ls n.cpu m).1.busOp = .read a →
       sysData n i = (runSched i ls n.cpu m).2.read a) :
@@ -226,7 +232,7 @@ theorem T_SYS_4_cpu_projection_mem (n : Nes) (ls : Nat → IntLines) (m : Mem) (
     intro hi
     have hr : (Nes.runCycles i n).resetLine = false := by rw [runCycles_resetLine]; exact hrst
     have e := ih (by omega)
-    rw [runCycles_succ', step_cpu _ hr (hdma i (by omega)), runSched_succ', e]
+    rw [runCycles_succ', step_cpu _ hr (hdma i (by omega)) (hdmc i (by omega)), runSched_succ', e]
     show _ = (Core.cycle _ _ _).1
     have hli := hl i (by omega)
     unfold sysLines at hli
@@ -248,7 +254,7 @@ cycles `i < W` of the window (`W = (j - 1) + (8 - (j - 1)) + 15`):
 * the PPU's NMI line as the CPU samples it (after the cycle's dots) is low for `i + 1 < j` and
   high from `i = j - 1` on (an edge in the instruction's 1-based cycle `j ≥ 1`, held — vblank
   holds it ~2273 cycles unless `$2002` is read or `$2000.7` cleared);
-* the IRQ line (`cart.irq || apuIrq`) is the constant `irq`; no DMA is active;
+* the IRQ line (`cart.irq || apuIrq`) is the constant `irq`; no DMA (OAM or DMC) is active;
 * the CPU's reads agree with the flat image `m` run by `runSched` (bus coherence);
 * T-CPU-7's side conditions (the edge falls inside the instruction; no JAM fetched).
 Then `d` system cycles after the edge, `d ≤ (8 - (j - 1)) + 15`, the CPU is at an instruction
@@ -266,6 +272,8 @@ theorem T_SYS_4_nmi (n : Nes) (irq : Bool) (m : Mem) (j : Nat)
       ((cpuPre (Nes.runCycles i n)).1.cart.irq || (cpuPre (Nes.runCycles i n)).1.apuIrq) = irq)
     (hdma : ∀ i, i < (j - 1) + ((maxCycles - (j - 1)) + maxCycles + 7) →
       (Nes.runCycles i n).dma.active = false)
+    (hdmc : ∀ i, i < (j - 1) + ((maxCycles - (j - 1)) + maxCycles + 7) →
+      (Nes.runCycles i n).dmcBusy = false)
     (hd : ∀ i, i < (j - 1) + ((maxCycles - (j - 1)) + maxCycles + 7) → ∀ a,
       (runSched i (hjNmiFrom j fun _ => irq) n.cpu m).1.busOp = .read a →
       sysData n i = (runSched i (hjNmiFrom j fun _ => irq) n.cpu m).2.read a)
@@ -290,7 +298,7 @@ theorem T_SYS_4_nmi (n : Nes) (irq : Bool) (m : Mem) (j : Nat)
     have e2 := hirq i hi
     unfold sysLines cycleLines Nes.lines hjNmiFrom
     rw [e1, e2]
-  have e := T_SYS_4_cpu_projection_mem n _ m _ hrst hdma hl hd (j - 1 + d) (by omega)
+  have e := T_SYS_4_cpu_projection_mem n _ m _ hrst hdma hdmc hl hd (j - 1 + d) (by omega)
   exact ⟨d, hdle, by rw [e]; exact h1, by rw [e]; exact h2, by rw [e]; exact h3⟩
 
 end Nes.System.Proofs

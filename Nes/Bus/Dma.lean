@@ -34,9 +34,9 @@ flight). Cycle `left = c` performs `op`:
 * The halt cycle performs no bus access (real hardware repeats the halted CPU read — visible
   only for read-sensitive registers such as `$2002`/`$4016`), and the halt is taken on the cycle
   after the `$4014` write even when that cycle is a CPU write (hardware waits for a read cycle).
-* **DMC DMA (M5 hook):** the APU's sample fetches steal cycles from (and interleave with) OAM
-  DMA — `sprdma_and_dmc_dma`. There is no APU yet; when it lands, `op` gains a priority check
-  for a pending DMC fetch (taking the cycle, without advancing `left`, on get cycles).
+* **DMC DMA** is the system's (`Nes.System.Nes.dmcCycle`): a DMC fetch takes one of this unit's
+  get cycles (this unit is then not advanced, `complete` is not called) and the unit idles one
+  realignment cycle; this machine itself is unchanged.
 
 ## Spec (`Nes.System.Proofs.Dma`, T-SYS-2)
 
