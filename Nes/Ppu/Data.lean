@@ -24,6 +24,20 @@ Let `a = v & $3FFF` (`State.vramAddr`).
   increments by `incAddr` (`+1`, or `+32` when `ctrl` bit 2 is set, masked to 15 bits).
 * `write2007 s d = s.writeData d`: emit `VramWrite a d`, then `incAddr`.
 
+### Back-to-back reads (`read2007At now rd palRd`)
+
+On hardware the buffer refill is a PPU-bus read that lands a little over one CPU cycle (≥ 3 dots)
+after the CPU's `$2007` read, while `v` is incremented at once. A second `$2007` read on the very
+next CPU cycle (the page-crossing dummy read of `lda $20F7,x`, or the DMC DMA halt repeating a
+read) therefore still returns the buffer as it was *before* the previous refill, yet issues its
+own refill from the already-incremented `v` (blargg `dmc_dma_during_read4/double_2007_read.s`:
+accepted result `22 44 55 66 77` — the second read returns the stale `$22`, the buffer still
+advances twice; `dma_2007_read.s`: 2–3 extra effective reads before the real one).
+`read2007At now` is `read2007` plus: `prevBuffer :=` the old `readBuffer`,
+`lastRead2007 := now` (`now` = CPU cycle); and when `now = lastRead2007 + 1` with a buffered
+address, the returned byte (and `ioLatch`) is `prevBuffer` instead (`read2007At_settled`:
+otherwise it returns exactly what `read2007` does).
+
 Not modelled (deliberately): PPUMASK greyscale (bit 0) masking the palette read value with
 `$30`, and the during-rendering glitch where a `$2007` access increments coarse X and Y
 (`incX`/`incY`) instead of `incAddr`; the latter belongs to the timing item.
@@ -44,6 +58,17 @@ palette addresses, which still refill the buffer from the nametable byte at `a -
   else
     let r := (palRd (Nes.Bus.paletteIndex a).val.toUInt8 &&& 0x3F) ||| (s.ioLatch &&& 0xC0)
     ({ s with readBuffer := rd (a - 0x1000), ioLatch := r }.incAddr, r)
+
+/-- `$2007` PPUDATA read at CPU cycle `now`: `read2007`, except that a buffered read on the
+CPU cycle right after another `$2007` read returns `prevBuffer` (the previous refill has not
+landed yet). Records `prevBuffer` and `lastRead2007` for the next read. -/
+@[specialize] def read2007At (now : UInt64) (rd : UInt16 → UInt8) (palRd : UInt8 → UInt8)
+    (s : State) : State × UInt8 :=
+  let (s', r) := read2007 rd palRd s
+  if now == s.lastRead2007 + 1 && s.vramAddr < 0x3F00 then
+    let r := s.prevBuffer
+    ({ s' with ioLatch := r, prevBuffer := s.readBuffer, lastRead2007 := now }, r)
+  else ({ s' with prevBuffer := s.readBuffer, lastRead2007 := now }, r)
 
 /-- `$2007` PPUDATA write: the VRAM write to perform and the incremented state
 (`writeData`; the caller routes palette addresses to palette RAM through `ppuDecode`). -/

@@ -96,10 +96,7 @@ def runRom (path : System.FilePath) (rep : Report) (maxCycles : Nat) :
 
 /-- ROMs that cannot pass yet, with the reason (reported, not counted as failures). -/
 def knownFail : List (String × String) :=
-  [ ("dmc_dma_during_read4/double_2007_read.nes",
-      "PPU: back-to-back $2007 reads (the dummy read of `lda $20F7,x`) are not merged; not a DMA \
-      behaviour"),
-    ("sprdma_and_dmc_dma/sprdma_and_dmc_dma.nes",
+  [ ("sprdma_and_dmc_dma/sprdma_and_dmc_dma.nes",
       "DMC DMA at the edges of OAM DMA (the documented 1/3-cycle cases) not modelled: prints \
       528/526, CRC mismatch"),
     ("sprdma_and_dmc_dma/sprdma_and_dmc_dma_512.nes",

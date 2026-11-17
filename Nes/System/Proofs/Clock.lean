@@ -32,9 +32,11 @@ theorem cpuRead_pos (n : Nes) (a : UInt16) : PosEq n (n.cpuRead a).1 := by
   split
   · exact .refl _
   split
-  · have := ppu_cpuRead_pos (State.read2007 (Nes.ppuPeek n.cart n.ciram n.ciram_size)
+  · have := ppu_cpuRead_pos (State.read2007At n.clkCpu (Nes.ppuPeek n.cart n.ciram n.ciram_size)
       (Nes.palPeek n.pal n.pal_size)) (fun s => by
-        unfold State.read2007; dsimp only; split <;> exact ⟨rfl, rfl⟩) n.ppu a
+        unfold State.read2007At State.read2007; dsimp only
+        repeat' split
+        all_goals exact ⟨rfl, rfl⟩) n.ppu a
     exact ⟨this.1, this.2, rfl, rfl, rfl⟩
   repeat' split
   all_goals exact ⟨rfl, rfl, rfl, rfl, rfl⟩

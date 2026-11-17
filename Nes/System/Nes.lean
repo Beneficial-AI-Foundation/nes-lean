@@ -276,7 +276,7 @@ on every dot. -/
     let i := ramIndex a
     (n, n.ram[i.val]'(fin_lt_size n.ram_size i))
   else if a < 0x4000 then
-    let rd := Ppu.State.read2007 (fun a => ppuPeek n.cart n.ciram n.ciram_size a)
+    let rd := Ppu.State.read2007At n.clkCpu (fun a => ppuPeek n.cart n.ciram n.ciram_size a)
       (fun i => palPeek n.pal n.pal_size i)
     let (ppu, v) := n.ppu.cpuRead rd a
     ({ n with ppu }, v)

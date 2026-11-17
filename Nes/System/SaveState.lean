@@ -250,16 +250,18 @@ instance : Codec Ppu.State :=
       s.oam, s.secOam, s.bgPatLo, s.bgPatHi, s.bgAttrLo, s.bgAttrHi, s.bgNextTile, s.bgNextAttr,
       s.bgNextLo, s.bgNextHi, s.evalN, s.evalM, s.evalSec, s.evalLatch, s.sprCount, s.sprPatLo,
       s.sprPatHi, s.sprAttr, s.sprX, s.spr0Next, s.spr0Line, s.dot, s.scanline, s.frameOdd,
-      s.nmiOut, s.suppressVbl, s.a12, s.frame, s.emphasis, s.frameReady, s.renderLatch))
+      s.nmiOut, s.suppressVbl, s.a12, s.frame, s.emphasis, s.frameReady, s.renderLatch,
+      s.prevBuffer, s.lastRead2007))
     (fun (ctrl, mask, status, oamAddr, v, t, x, w, readBuffer, ioLatch, oam, secOam, bgPatLo,
         bgPatHi, bgAttrLo, bgAttrHi, bgNextTile, bgNextAttr, bgNextLo, bgNextHi, evalN, evalM,
         evalSec, evalLatch, sprCount, sprPatLo, sprPatHi, sprAttr, sprX, spr0Next, spr0Line, dot,
         scanline, frameOdd, nmiOut, suppressVbl, a12, frame, emphasis, frameReady,
-        renderLatch) =>
+        renderLatch, prevBuffer, lastRead2007) =>
       ⟨ctrl, mask, status, oamAddr, v, t, x, w, readBuffer, ioLatch, oam, secOam, bgPatLo,
         bgPatHi, bgAttrLo, bgAttrHi, bgNextTile, bgNextAttr, bgNextLo, bgNextHi, evalN, evalM,
         evalSec, evalLatch, sprCount, sprPatLo, sprPatHi, sprAttr, sprX, spr0Next, spr0Line, dot,
-        scanline, frameOdd, nmiOut, suppressVbl, a12, frame, emphasis, frameReady, renderLatch⟩)
+        scanline, frameOdd, nmiOut, suppressVbl, a12, frame, emphasis, frameReady, renderLatch,
+        prevBuffer, lastRead2007⟩)
     (fun _ => rfl)
 
 /-! ### Cartridge -/
@@ -413,7 +415,7 @@ theorem ofImage_toImage (n : Nes) : ofImage n.cart.rom (toImage n) = n := rfl
 def magic : List UInt8 := [0x4E, 0x45, 0x53, 0x53]
 
 /-- Format version (bump when a field is added to the machine). -/
-def version : UInt8 := 2
+def version : UInt8 := 3
 
 /-- The header: magic and version. -/
 def header : List UInt8 := magic ++ [version]
