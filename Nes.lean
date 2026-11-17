@@ -44,3 +44,4 @@ import Nes.Frontend.Palette
 import Nes.Frontend.Image
 import Nes.Ppu.Step
 import Nes.System.Nes
+import Nes.Cart.Mappers.CNROM
