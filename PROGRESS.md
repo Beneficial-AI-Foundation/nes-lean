@@ -6,9 +6,9 @@ Keep this file small: trim the tick log, never paste build output here.
 
 ## Resume here
 
-- **Current milestone:** M1
-- **Current branch:** `m1-cpu-isa`
-- **Next action:** M1 close — confirm CI green on PR #2, check definition of done, final PR body, mark ready; then start M2 (`m2-cpu-micro` from `m1-cpu-isa`).
+- **Current milestone:** M2
+- **Current branch:** `m2-cpu-micro`
+- **Next action:** M2 batch: `Cpu/Micro.lean` ∥ `Cpu/Interrupts.lean`; then trace runner, T-REF-1 lemma groups, T-CPU-6/7, blargg CPU suites.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -23,7 +23,7 @@ when the milestone's definition of done holds.
 |---|---|---|---|---|---|---|
 | M0 | Scaffold | 0 | `m0-scaffold` | `main` | #1 | merged |
 | M1 | nestest green | 1 | `m1-cpu-isa` | `main` | #2 | ready for review |
-| M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | — | not started |
+| M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | — | in progress |
 | M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | — | not started |
 | M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | — | not started |
 | M5 | Sounds right | 6 | `m5-apu` | `m4-system` | — | not started |
@@ -188,3 +188,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M1  Isa.step: Harte 2,560,000/2,560,000 (+cycles), nestest 8991/8991; ALU proofs T-CPU-1/2, T-REF-2 (22 theorems); CI fetches testdata
 - 2026-11-17  M1  T-CPU-5 (11 thms), T-CPU-8 (31 Harte cases as theorems), bench 35 M instr/s; 65 theorems in registry; all M1 items but PR-ready ticked
 - 2026-11-17  M1  CI green on 7897ff6; definition of done holds; PR #2 marked ready
+- 2026-11-17  M2  started milestone (branch `m2-cpu-micro`, base `m1-cpu-isa`)
