@@ -161,7 +161,20 @@ def registry : List Name :=
   , `Nes.Ppu.Proofs.T_REF_2_incY
   , `Nes.Ppu.Proofs.T_REF_2_copyX
   , `Nes.Ppu.Proofs.T_REF_2_copyY
-  , `Nes.Ppu.Proofs.T_REF_2_loopy ]
+  , `Nes.Ppu.Proofs.T_REF_2_loopy
+  , `Nes.Bus.Proofs.T_BUS_1_ram
+  , `Nes.Bus.Proofs.T_BUS_1_ppuReg
+  , `Nes.Bus.Proofs.T_BUS_1_ppu_wrap
+  , `Nes.Bus.Proofs.T_BUS_1_palette
+  , `Nes.Bus.Proofs.T_BUS_1_palette_aliases
+  , `Nes.Bus.Proofs.T_BUS_1_palette_period
+  , `Nes.Bus.Proofs.T_BUS_1_nametable_fold
+  , `Nes.Bus.Proofs.T_BUS_1_nametable_idem
+  , `Nes.Bus.Proofs.T_BUS_1_nametable
+  , `Nes.Bus.Proofs.T_BUS_1_ciram_horizontal
+  , `Nes.Bus.Proofs.T_BUS_1_ciram_vertical
+  , `Nes.Bus.Proofs.T_BUS_1_ciram_singleLow
+  , `Nes.Bus.Proofs.T_BUS_1_ciram_singleHigh ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

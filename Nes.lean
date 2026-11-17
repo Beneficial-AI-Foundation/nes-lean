@@ -23,3 +23,6 @@ import Nes.Ppu.Types
 import Nes.Ppu.Loopy
 import Nes.Ppu.Registers
 import Nes.Ppu.Proofs.Loopy
+import Nes.Bus.Map
+import Nes.Bus.OpenBus
+import Nes.Bus.Proofs.Mirroring
