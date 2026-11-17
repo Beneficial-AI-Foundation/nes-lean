@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M5
 - **Current branch:** `m5-apu`
-- **Next action:** M5 batch: FrameCounter + T-APU-1 ∥ pulse/triangle/noise units ∥ Dmc + T-APU-3 ∥ Mixer + T-APU-2 (separate files); then wire into `stepCycle`, DMC DMA, WAV, blargg APU suites.
+- **Next action:** M5: `Apu/Apu.lean` (register file $4000–$4017, per-cycle tick composing frame counter/channels/DMC, mixer sample) wired into `System.stepCycle` (apuIrq, DMC DMA stall via `Dmc.dmaStall`, `apuHalf`), `nes run --wav`, then blargg `apu_test`, `dmc_dma_during_read4`, `apu_reset`.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -112,10 +112,10 @@ Parallel tracks: {System stepCycle/Frame + T-SYS-1/3} ∥ {DMA + T-SYS-2} ∥ {S
 
 ### M5 — Sounds right (Phase 6)
 Parallel tracks: {FrameCounter + T-APU-1 + DMC DMA wiring} ∥ {pulse/triangle/noise units} ∥ {Dmc + T-APU-3} ∥ {Mixer + T-APU-2}; then WAV output → blargg APU suites.
-- [ ] `Apu/FrameCounter.lean` (4/5-step, IRQ) + T-APU-1; DMC DMA cycle stealing wired into `stepCycle`
-- [ ] Pulse ×2, triangle, noise, length counters, envelopes, sweeps
-- [ ] `Apu/Dmc.lean` + T-APU-3
-- [ ] `Apu/Mixer.lean` + T-APU-2; WAV output in CLI
+- [ ] `Apu/FrameCounter.lean` (4/5-step, IRQ) + T-APU-1; DMC DMA cycle stealing wired into `stepCycle` — _frame counter + T-APU-1 landed; remaining: compose the APU and wire it + DMC DMA into `stepCycle`_
+- [x] Pulse ×2, triangle, noise, length counters, envelopes, sweeps
+- [x] `Apu/Dmc.lean` + T-APU-3
+- [ ] `Apu/Mixer.lean` + T-APU-2; WAV output in CLI — _mixer + T-APU-2 + WAV encoder/downsampler landed; remaining: `nes run --wav` once the APU is in the System_
 - [ ] blargg `apu_test`, `dmc_dma_during_read4`, `apu_reset` green
 - [ ] PR M5 ready. Create `m6-ppu-theorem`.
 
@@ -215,6 +215,10 @@ the docs, test-harness surprises.
 - 2026-11-17 [roms] MMC3: A12 follows `v` when rendering is off, so `$2006`/`$2007` accesses clock the counter (A12_clocking tests pass); counter clocks on the first sprite fetch (dot 261); `$C001` clears the counter without setting IRQ. `other/high-hopes.nes` (MMC3) renders black at 240/600 — unexplained, investigate later; `240pee-bnrom.nes` is mapper 34 (unsupported).
 - 2026-11-17 [lean] `Nat.strong_induction_on` doesn't exist in this core — use `Nat.strongRecOn`.
 - 2026-11-17 [perf] Lean's reset/reuse does not reach a `{ s with … }` placed inside a join point declared before the state's last use — any update after branches or under `&&` chains allocates a fresh structure (Ppu.State has ~49 fields). Fix pattern: a `@[specialize, noinline]` branchy helper returns packed scalars (UInt64), then ONE straight-line `{ s with … }`. Also: `@[inline]` on a recursive loop blocks `@[specialize]` (use a non-inline specialised worker); capturing the whole `Nes` in a closure kept `ppu` shared and copied the 60 KiB frame every dot (16.9 fps); a `Nat` shift (`y.toNat <<< 8`) took a GMP path per pixel (~33% of runtime).
+- 2026-11-17 [apu] Frame counter: `$4017` reset lands on the 3rd tick after an even-cycle write, 4th after odd; the composer must `tick` for the write cycle before doing the bus write. 4-step events at CPU cycles 7457/14913/22371/29829, IRQ 29828–29830, wrap 29830; 5-step adds 37281, wrap 37282.
+- 2026-11-17 [apu] Channel choices: ultrasonic triangle (period < 2) freezes the sequencer (holds level); sweep negative target clamps to 0; noise period table stored in CPU cycles (APU timer reloads `entry/2 − 1`); length halt stored in both `len.halt` and `env.loop`. DMC: timer counts CPU cycles; power-on `bufferEmpty` → first fetch requested immediately (no start-up delay); stall = 3 (get cycle) / 4 (put cycle) / 2 (during OAM DMA); edge cases at the end of OAM DMA left to integration.
+- 2026-11-17 [apu] Mixer runtime: `pulseTable` (31, exact, ≤ ½ LSB) + `tndTable` (203, NESdev approximation `163.67/(24329/k+100)`, ≤ 0.013 ≈ 1.3% FS vs exact); `mixSample` caps at 65535 (the approximate tables can sum to 65598). Exact mix max ≈ 0.99999935.
+- 2026-11-17 [lean] `omega` does not see through `UInt16`/`UInt8` atoms in v4.36 — work on `toNat` with helper lemmas, or `UInt16.toBitVec_inj.mp; simp; bv_omega`. `Nat.iterate` / `UInt16.sub_sub` don't exist in core. `#eval` via `lake env lean` works (only `--run` can't load the dylibs). `{ s with … }` inside a `∀ k, … →` theorem statement may fail to parse — wrap it in a def.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -261,3 +265,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M4  perf pass: ~180/170 fps (3.0×/2.8× realtime) from ~66/63; golden hashes unchanged; all M4 work items ticked
 - 2026-11-17  M4  CI green on 3f11587; definition of done holds; PR #5 marked ready
 - 2026-11-17  M5  started milestone (draft PR #6, base `m4-system`)
+- 2026-11-17  M5  APU components: FrameCounter+T-APU-1, channels+units (LFSR period proved), DMC+T-APU-3, Mixer+T-APU-2 (table error bounds), WAV; 237 theorems
