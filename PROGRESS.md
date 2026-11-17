@@ -21,7 +21,7 @@ when the milestone's definition of done holds.
 
 | M | Title | Plan phases | Branch | Base | PR | Status |
 |---|---|---|---|---|---|---|
-| M0 | Scaffold | 0 | `m0-scaffold` | `main` | #1 | in progress |
+| M0 | Scaffold | 0 | `m0-scaffold` | `main` | #1 | ready for review |
 | M1 | nestest green | 1 | `m1-cpu-isa` | `m0-scaffold` | — | not started |
 | M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | — | not started |
 | M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | — | not started |
@@ -50,7 +50,7 @@ Parallel tracks: after items 1–2 land (they define the Lake layout), items 3�
 - [x] `scripts/fetch-testdata.sh`: SingleStepTests `nes6502`, `nestest.nes` + `nestest.log`, blargg suites; pinned commits; `testdata/` gitignored
 - [x] GitHub Actions: build, test, axiom check, `grep -rn sorry Nes/` must be empty; `.lake` cache
 - [x] README: build/run/test instructions; link PLAN.md and PROGRESS.md
-- [ ] CI green on the draft PR → mark ready. Create `m1-cpu-isa` from here.
+- [x] CI green on the draft PR → mark ready. Create `m1-cpu-isa` from here.
 
 ### M1 — nestest green (Phase 1)
 Parallel tracks: {Types → Alu → Alu proofs} ∥ {Decode → Decode proofs} ∥ {Harte JSON loader, Nestest log formatter (against a stub `State`)}; then Isa (needs Alu + Decode) → Isa proofs ∥ Harte sweep ∥ nestest; T-CPU-8 ∥ benchmark.
@@ -164,3 +164,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M0  started milestone (draft PR #1); Lake layout on v4.36.0 + Batteries v4.36.0, build/test/exe green
 - 2026-11-17  M0  4 agents: Bits lemmas, axiom check (lib TestSuite), fetch-testdata (pinned), CI workflow; build/test green
 - 2026-11-17  M0  README written; first CI run on push green (37 s)
+- 2026-11-17  M0  CI green on 7835771; definition of done holds; PR #1 marked ready
