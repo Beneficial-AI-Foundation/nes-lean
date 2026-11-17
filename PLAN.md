@@ -11,7 +11,10 @@ the objects of the theorems.
 **Goals**
 
 1. An executable emulator that runs real NES software (NROM/MMC1/UxROM/CNROM/MMC3/AxROM
-   covers ~90 % of the library) at or near real time on a laptop.
+   covers ~90 % of the library) at or near real time on a laptop. **The shipped product is
+   the native binary produced by Lean's C backend** (`lake build nes` →
+   `.lake/build/bin/nes`), compiled with release flags — never the interpreter or `#eval`.
+   The whole design is chosen so that the compiled C is fast (Section 4, "Performance").
 2. A readable, instruction-level *specification* of the 2A03 and a per-dot specification of
    the 2C02, written as plain Lean functions.
 3. Machine-checked theorems connecting the fast/cycle-level implementation to those
@@ -161,6 +164,21 @@ never elaborates proofs — keeps the edit/run loop fast.
   all 256 opcodes.
 - **Style**: spec definitions get `@[simp]`/`@[grind]` attributes deliberately, not by
   default. Each proof file has a `Spec` section stating the theorem in prose first.
+- **Performance (compiled C)**: Lean compiles every definition to C and then to native
+  code via `leanc`/clang. The `nes` executable is built with `moreLeancArgs := #["-O3",
+  "-DNDEBUG"]` (plus `-march=native` for local benchmarks only, never in CI), and the
+  library sets `precompileModules := true` so the test harness and `#eval` also run native
+  code. Hot-path rules, enforced from M1 onward: scalars are `UInt8/16/32/64` (unboxed in
+  the C backend), never `Nat`/`Int` outside proofs; state structures are updated with
+  `{ s with … }` on uniquely referenced values so the compiler reuses the allocation;
+  `Vector`/`ByteArray` writes happen through functions that keep the array uniquely
+  referenced (no sharing across the step), so they are in-place `memcpy`-free stores; no
+  closures, `List`s, or `Option` allocations inside `stepCycle`; lookup tables are
+  top-level `Vector` constants; `@[inline]` on the micro-op interpreter and `@[specialize]`
+  on anything polymorphic in the hot loop. Proofs are erased and cost nothing at runtime;
+  `Fin n` is a `Nat` at runtime and small `Nat`s are unboxed, so `Fin`-indexed access
+  compiles to a bounds-check-free array load. The Phase 9 pass reads the generated C
+  (`.lake/build/ir/*.c`) for the hot functions and fixes anything that boxes or allocates.
 - **CI** (GitHub Actions, `lean-action`): `lake build`, `lake test` (fast subset:
   nestest + one Harte opcode per class + blargg CPU tests), axiom check, no-`sorry`
   check. Full Harte sweep (2.56 M cases) nightly / on demand.
@@ -423,7 +441,7 @@ Each phase lists definitions, proofs, tests, and a definition of done. Effort is
 | 6 | **APU**: frame counter/IRQ + DMC DMA first, then channels and mixer, WAV output + T-APU-1..3 | L | 5 |
 | 7 | **Mappers**: MMC1, UxROM, CNROM, MMC3 (+A12 IRQ), AxROM + T-CART-3/4 | M | 5 |
 | 8 | **PPU static-frame theorem T-PPU-6** and T-PPU-3/4 completion | XL | 4 |
-| 9 | **Performance** pass (profiling, `Vector`/`ByteArray` hot paths, `@[inline]`, avoiding allocation in `stepCycle`) with refinement proofs for anything changed; SDL frontend | M | 5 |
+| 9 | **Performance** pass on the compiled C (profile the native binary, read the generated C for `stepCycle`, remove boxing/allocation, `Vector`/`ByteArray` in-place paths, `@[inline]`/`@[specialize]`) with refinement proofs for anything changed; SDL frontend | M | 5 |
 | 10 | **Program logic** (Section 6.7) | L | 1 |
 
 Milestones (what a demo looks like):
@@ -482,6 +500,9 @@ Phases 3 and 2 are independent and can proceed in parallel; so can 6, 7, 8, 9 af
    actually optimized (ALU bit tricks, LUTs, microcode).
 5. **Repo policy**: no commercial ROMs, ever; test ROMs and the Harte suite are fetched by
    `scripts/fetch-testdata.sh` into the gitignored `testdata/`.
+6. **The product is the native binary from Lean's C backend**, built with release flags;
+   the hot path follows the compiled-C rules in Section 4. Real-time speed is a milestone
+   criterion (M4), not an afterthought.
 
 ---
 

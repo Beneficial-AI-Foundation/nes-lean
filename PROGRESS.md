@@ -43,7 +43,7 @@ a milestone is otherwise a suggestion. "PR ready" is always last.
 
 ### M0 — Scaffold
 Parallel tracks: after items 1–2 land (they define the Lake layout), items 3–7 are all independent.
-- [ ] `lake init` layout: `lakefile.toml` with lib `Nes`, exe `nes` (`Main.lean`), test driver `Test`; `lean-toolchain` = latest stable (v4.36.0; fall back to installed v4.35.0 if the download fails)
+- [ ] `lake init` layout: `lakefile.toml` with lib `Nes` (`precompileModules = true`), exe `nes` (`Main.lean`) built with `moreLeancArgs = ["-O3", "-DNDEBUG"]`, test driver `Test`; `lean-toolchain` = latest stable (v4.36.0; fall back to installed v4.35.0 if the download fails)
 - [ ] Batteries dependency pinned to the tag matching the toolchain; `lake update`; `lake build` green
 - [ ] `Nes/Prelude/Bits.lean`: first `UInt8`/`UInt16` ↔ `BitVec`/`Nat` bridging lemmas, one `bv_decide` and one `omega` smoke proof
 - [ ] `Test/Axioms.lean`: theorem-name registry + `#print axioms` check that fails on `sorryAx` / `Lean.ofReduceBool`; wired into `lake test`
@@ -64,7 +64,7 @@ Parallel tracks: {Types → Alu → Alu proofs} ∥ {Decode → Decode proofs} �
 - [ ] `Test/Harte.lean`: JSON loader for `nes6502` (flat 64 KiB memory), final-state diff; fast subset in `lake test`
 - [ ] Harte final-state sweep 256/256 green (fix the spec until green; log every hardware surprise as a gotcha)
 - [ ] `Test/Nestest.lean`: automated mode from `$C000`, log formatter, diff against golden log → green
-- [ ] Benchmark ISA `step` (instr/s), record below
+- [ ] Benchmark ISA `step` (instr/s) in the native `nes --bench` binary (not `#eval`); inspect the generated C for `step` in `.lake/build/ir/` for boxing/allocation; record below
 - [ ] T-CPU-8: one Harte case per instruction class proved by `decide`
 - [ ] PR M1 ready. Create `m2-cpu-micro`.
 
@@ -103,7 +103,7 @@ Parallel tracks: {System stepCycle/Frame + T-SYS-1/3} ∥ {DMA + T-SYS-2} ∥ {S
 - [ ] Mappers: MMC1 (+T-CART-3), UxROM, CNROM, AxROM (+T-CART-2 each)
 - [ ] MMC3 with A12 IRQ (+T-CART-2, T-CART-4); MMC3 IRQ test ROMs green
 - [ ] Golden frame hashes for 3+ homebrew ROMs across mappers
-- [ ] Performance pass: profile `stepCycle`; target ≥ real time; record numbers (3-tick budget, then move on)
+- [ ] Performance pass on the native binary: profile `stepCycle`, read its generated C, remove boxing/allocation/closures per PLAN.md §4 "Performance"; target ≥ real time (60 fps) on a homebrew ROM; record numbers (3-tick budget, then move on)
 - [ ] PR M4 ready. Create `m5-apu`.
 
 ### M5 — Sounds right (Phase 6)
@@ -150,6 +150,7 @@ the docs, test-harness surprises.
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
 - 2026-11-17 Phase 9 (performance) folded into M4; M0 added as its own PR so CI exists before M1.
+- 2026-11-17 The product is the native binary from Lean's C backend with `-O3`; hot-path rules in PLAN.md §4 apply from M1 (PLAN.md §10 decision 6).
 
 ## Tick log (keep the last 20 lines only)
 _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_

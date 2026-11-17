@@ -17,6 +17,10 @@ between ticks and across context compaction — treat it as the program counter.
 - The only permitted force push is `--force-with-lease` on the *current milestone branch*
   right after rebasing the stack because its base was merged.
 - No `sorry`, no `native_decide`, no `partial`/`unsafe`/`panic!`/`IO` under `Nes/`.
+- The product is the native binary from Lean's C backend. Code on the emulation hot path
+  follows PLAN.md §4 "Performance (compiled C)": `UInt*` scalars, no `Nat`/`Int`/closures/
+  `List`/`Option` allocation in `stepCycle`, uniquely-referenced `Vector` updates.
+  Benchmarks are taken on the `-O3` native binary, never via `#eval`.
 - No commercial ROMs in the repo; test data only via `scripts/fetch-testdata.sh`.
 - End every commit message with the attribution line your session's instructions specify.
 - Keep context small: never `cat` large files or print full build logs. Use `grep -n`,
