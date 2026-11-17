@@ -95,7 +95,7 @@ Parallel tracks: {Bus + proofs} ∥ {Cart/Ines + NROM + proofs} ∥ {Controller}
 - [x] `Ppu/Background.lean` fetch pipeline + shifters
 - [x] `Ppu/Sprites.lean` evaluation (overflow bug) + fetch; `Ppu/Render.lean` priority/mux
 - [x] `$2007` read buffer + T-PPU-7; NMI line + T-PPU-5
-- [ ] Minimal `System` clocking sufficient to run blargg `ppu_vbl_nmi`, `sprite_hit_tests`, `sprite_overflow_tests`, `ppu_read_buffer` → green — _System + `Ppu.Step` landed; 26/27 green (vbl_nmi 10/10, sprite_hit 11/11, sprite_overflow 5/5); remaining: `ppu_read_buffer` is a CNROM cart → pull the CNROM mapper forward from M4_
+- [x] Minimal `System` clocking sufficient to run blargg `ppu_vbl_nmi`, `sprite_hit_tests`, `sprite_overflow_tests`, `ppu_read_buffer` → green — 27/27 (CNROM pulled forward for `ppu_read_buffer`)
 - [ ] CLI: run N frames → PNG/PPM; first homebrew title screen; commit its frame hash as golden (never the ROM)
 - [ ] PR M3 ready. Create `m4-system`.
 
@@ -104,7 +104,7 @@ Parallel tracks: {System stepCycle/Frame + T-SYS-1/3} ∥ {DMA + T-SYS-2} ∥ {S
 - [ ] `System/Nes.lean` `stepCycle`, `runDots`, `runFrame`; interrupt wiring; T-SYS-1, T-SYS-3
 - [ ] `Bus/Dma.lean` OAM DMA (513/514) ; T-SYS-2
 - [ ] `System/SaveState.lean` + T-REF-3; input script + T-REF-4; T-SYS-4
-- [ ] Mappers: MMC1 (+T-CART-3), UxROM, CNROM, AxROM (+T-CART-2 each)
+- [ ] Mappers: MMC1 (+T-CART-3), UxROM, CNROM (done in M3), AxROM (+T-CART-2 each)
 - [ ] MMC3 with A12 IRQ (+T-CART-2, T-CART-4); MMC3 IRQ test ROMs green
 - [ ] Golden frame hashes for 3+ homebrew ROMs across mappers
 - [ ] Performance pass on the native binary: profile `stepCycle`, read its generated C, remove boxing/allocation/closures per PLAN.md §4 "Performance"; target ≥ real time (60 fps) on a homebrew ROM; record numbers (3-tick budget, then move on)
@@ -214,6 +214,7 @@ the docs, test-harness surprises.
 - 2026-11-17 Mapper interface is closure-free (`inductive MapperState` + `@[inline]` match dispatch, with `class Mapper σ` carrying the PLAN §5.2 operation set) instead of a structure of functions — PLAN §4 hot-path rules (no closures per cycle) take precedence. `cpuRead` takes the open-bus byte instead of returning `Option`.
 - 2026-11-17 PPU loopy `v`/`t` are `UInt16` (and `x`, `dot`, `scanline` UInt) with `BitVec` field views for proofs, instead of `BitVec 15` storage (Nat-backed, boxed at runtime); OAM, secondary OAM and the frame buffer are `ByteArray` (unboxed) rather than `Vector UInt8` (8 B/byte boxed) — a refinement of PLAN §10.4 for large byte buffers. ROM PRG/CHR are `ByteArray` with `Fin size` bank offsets. Emphasis is one byte per frame, not per pixel.
 - 2026-11-17 System RAM/CIRAM/palette and PPU buffers use `ByteArray` with size invariants rather than `Vector UInt8 n` (PLAN §10.4) — unboxed bytes for speed, still `Fin`-indexed and total. The `Nes` structure is `Nes.System.Nes`.
+- 2026-11-17 CNROM mapper pulled forward from M4 into M3: blargg `ppu_read_buffer` (an M3 acceptance ROM) is a CNROM cart.
 
 ## Tick log (keep the last 20 lines only)
 _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
