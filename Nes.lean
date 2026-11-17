@@ -40,3 +40,5 @@ import Nes.Ppu.Data
 import Nes.Ppu.Proofs.Data
 import Nes.Ppu.Proofs.Timing
 import Nes.Ppu.Proofs.Vblank
+import Nes.Frontend.Palette
+import Nes.Frontend.Image
