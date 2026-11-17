@@ -6,9 +6,9 @@ Keep this file small: trim the tick log, never paste build output here.
 
 ## Resume here
 
-- **Current milestone:** M0
-- **Current branch:** `m0-scaffold`
-- **Next action:** wait for CI green on PR #1, then mark it ready (M0 close) and start M1 (`m1-cpu-isa`).
+- **Current milestone:** M1
+- **Current branch:** `m1-cpu-isa`
+- **Next action:** M1 batch: `Cpu/Types.lean` ∥ `Cpu/Decode.lean` ∥ Harte JSON loader (stub `State`) ∥ nestest log formatter (stub `State`).
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -22,7 +22,7 @@ when the milestone's definition of done holds.
 | M | Title | Plan phases | Branch | Base | PR | Status |
 |---|---|---|---|---|---|---|
 | M0 | Scaffold | 0 | `m0-scaffold` | `main` | #1 | ready for review |
-| M1 | nestest green | 1 | `m1-cpu-isa` | `m0-scaffold` | — | not started |
+| M1 | nestest green | 1 | `m1-cpu-isa` | `m0-scaffold` | — | in progress |
 | M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | — | not started |
 | M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | — | not started |
 | M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | — | not started |
