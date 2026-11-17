@@ -78,7 +78,9 @@ Parallel tracks: {Micro → Harte trace runner} ∥ {Interrupts}; then T-REF-1 p
 - [x] T-REF-1: ~20 instruction-suffix lemmas
 - [x] T-REF-1: table discharge; `#print axioms` clean
 - [x] `Cpu/Proofs/Stack.lean` T-CPU-6
-- [ ] `Cpu/Proofs/Interrupts.lean` T-CPU-7
+- [x] `Cpu/Proofs/Interrupts.lean` T-CPU-7 (IRQ masked, entry/BRK/B-bit/hijack over `Core`, NMI latch, 8-cycle boundary bound)
+- [ ] T-CPU-7 NMI latency end-to-end over `Core` (≤ `maxInstrCycles + 7` cycles from edge): relate `Core.runCycles` to `MicroState.runInstr`; show every instruction polls before its boundary (attempt 1 of 3 done)
+- [ ] T-CPU-7 hijack with an NMI edge in BRK cycles 2–4 and NMI consumed at the core layer (needs a per-cycle line-schedule runner); IRQ-masked core theorem derived from the opcode instead of assumed I=1 (attempt 1 of 3 done)
 - [ ] blargg `cpu_*`, `instr_test-v5`, `cpu_interrupts_v2`, `cpu_dummy_reads/writes` green (a minimal NROM bus may be pulled forward from Phase 3)
 - [ ] PR M2 ready. Create `m3-ppu`.
 
