@@ -11,3 +11,4 @@ import Nes.Cpu.Proofs.Conformance
 import Nes.Cpu.Interrupts
 import Nes.Cpu.Micro
 import Nes.Cpu.Proofs.Stack
+import Nes.Cpu.Core
