@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M3
 - **Current branch:** `m3-ppu`
-- **Next action:** M3 batch: `Ppu/Timing.lean` + T-PPU-1 ∥ `Ppu/Background.lean` ∥ `Ppu/Sprites.lean` + `Ppu/Render.lean` ∥ `$2007` buffer + T-PPU-7 / NMI line + T-PPU-5 (check file overlap first: all touch `Ppu.State`).
+- **Next action:** M3: `Ppu/Step.lean` composing `advance` → bg/sprite/pixel → `dotEvents` + minimal `System` clocking (CPU `Core` + bus + PPU, 3 dots/cycle) → blargg PPU suites; ∥ CLI frames → PPM/PNG.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -91,10 +91,10 @@ Parallel tracks: {Bus + proofs} ∥ {Cart/Ines + NROM + proofs} ∥ {Controller}
 - [x] `Cart/Ines.lean` + serializer; T-CART-1; `Cart/Mapper.lean` interface; `Mappers/NROM.lean`; T-CART-2 (NROM)
 - [x] `Input/Controller.lean`
 - [x] `Ppu/Types.lean`, `Ppu/Registers.lean`, `Ppu/Loopy.lean`; `Ppu/Proofs/Loopy.lean` T-PPU-2
-- [ ] `Ppu/Timing.lean` (dot/scanline, vblank, odd-frame skip); T-PPU-1
-- [ ] `Ppu/Background.lean` fetch pipeline + shifters
-- [ ] `Ppu/Sprites.lean` evaluation (overflow bug) + fetch; `Ppu/Render.lean` priority/mux
-- [ ] `$2007` read buffer + T-PPU-7; NMI line + T-PPU-5
+- [x] `Ppu/Timing.lean` (dot/scanline, vblank, odd-frame skip); T-PPU-1
+- [x] `Ppu/Background.lean` fetch pipeline + shifters
+- [x] `Ppu/Sprites.lean` evaluation (overflow bug) + fetch; `Ppu/Render.lean` priority/mux
+- [x] `$2007` read buffer + T-PPU-7; NMI line + T-PPU-5
 - [ ] Minimal `System` clocking sufficient to run blargg `ppu_vbl_nmi`, `sprite_hit_tests`, `sprite_overflow_tests`, `ppu_read_buffer` → green
 - [ ] CLI: run N frames → PNG/PPM; first homebrew title screen; commit its frame hash as golden (never the ROM)
 - [ ] PR M3 ready. Create `m4-system`.
@@ -195,6 +195,9 @@ the docs, test-harness surprises.
 - 2026-11-17 [lean] Inside `{ s with t := … }` numeric literals with `&&&`/`~~~` default to `Nat` — ascribe `(0x0C00 : UInt16)`. `f^[n]` needs Mathlib; use `Nat.repeat`. `h ▸ off.isLt` works where `rw` fails with "motive is not type correct" on `Fin rom.chrLen`.
 - 2026-11-17 [cart] iNES loader validated on all 290 `.nes` under `testdata/nes-test-roms`: 288 serialize back byte-exact; `flowing_palette.nes` has "blargg" in bytes 8–13 (archaic iNES, junk dropped by design); `LINUSMUS.NES` has magic `NES\x1B` and is rejected. Non-NROM ROMs use mappers 1, 2, 3, 4, 5, 7, 11, 22, 28, 34.
 - 2026-11-17 [ppu] `incAddr` does not yet model the `$2007`-during-rendering glitch (coarse X and Y increment) — belongs with PPU timing.
+- 2026-11-17 [ppu] Timing convention: `(scanline, dot)` is the dot just executed; `tick = dotEvents ∘ advance`; `Step.lean` should compose `dotEvents (render (advance s))`. A CPU access on a state at (241,0) falls one PPU clock before vblank set. Background ordering: read `ppuAddrBg s` before `bgDot`; `bgPixel` after `bgDot` gives column `dot−1`. Sprites: `pixel` and `evalDot` on dots 1–256 of lines 0–239 (bgPixel taken before shifters move), `fetchDot` on 257–320; sprite-0 hit set while `dot = x+1`.
+- 2026-11-17 [ppu] Known gaps: sprite evaluation ignores OAMADDR≠0 at the start of evaluation (corruption corner case); `$2007` during-rendering coarse X/Y increment glitch and PPUMASK greyscale on palette reads are not modelled in `read2007`; four-screen VRAM not modelled.
+- 2026-11-17 [lean] Mixing `>>>`/`<<<` with `|||`/`&&&` makes literals default to `Nat` ("failed to synthesize HAnd UInt16 Nat") — bind sub-terms with `let x : UInt16 := …` or annotate literals. Plain `decide` on `Rat` gets stuck; `decide +kernel` works. `lake env lean --run` uses the last built `.olean` — `lake build` after every edit.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -229,3 +232,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M2  CI green on f45bd06; definition of done holds (T-REF-1 closed); PR #3 marked ready
 - 2026-11-17  M3  started milestone (draft PR #4, base `m2-cpu-micro`)
 - 2026-11-17  M3  Bus/Map+OpenBus+T-BUS-1, Cart/Ines+NROM+T-CART-1/2+T-BUS-2, Controller, PPU Types/Registers/Loopy+T-PPU-2; 150 theorems
+- 2026-11-17  M3  PPU Timing+T-PPU-1/5, Background (0 mismatches), Sprites+Render (4842 checks), $2007+T-PPU-7; 165 theorems
