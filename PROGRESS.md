@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M3
 - **Current branch:** `m3-ppu`
-- **Next action:** M3: `Ppu/Step.lean` composing `advance` → bg/sprite/pixel → `dotEvents` + minimal `System` clocking (CPU `Core` + bus + PPU, 3 dots/cycle) → blargg PPU suites; ∥ CLI frames → PPM/PNG.
+- **Next action:** M3 batch: CNROM mapper (pulled forward from M4) + T-CART-2 (CNROM) → `ppu_read_buffer` ∥ CLI `nes run ROM --frames N --png out.png` + frame hash; `spritecans-2011` as first homebrew title screen, golden hash.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -95,7 +95,7 @@ Parallel tracks: {Bus + proofs} ∥ {Cart/Ines + NROM + proofs} ∥ {Controller}
 - [x] `Ppu/Background.lean` fetch pipeline + shifters
 - [x] `Ppu/Sprites.lean` evaluation (overflow bug) + fetch; `Ppu/Render.lean` priority/mux
 - [x] `$2007` read buffer + T-PPU-7; NMI line + T-PPU-5
-- [ ] Minimal `System` clocking sufficient to run blargg `ppu_vbl_nmi`, `sprite_hit_tests`, `sprite_overflow_tests`, `ppu_read_buffer` → green
+- [ ] Minimal `System` clocking sufficient to run blargg `ppu_vbl_nmi`, `sprite_hit_tests`, `sprite_overflow_tests`, `ppu_read_buffer` → green — _System + `Ppu.Step` landed; 26/27 green (vbl_nmi 10/10, sprite_hit 11/11, sprite_overflow 5/5); remaining: `ppu_read_buffer` is a CNROM cart → pull the CNROM mapper forward from M4_
 - [ ] CLI: run N frames → PNG/PPM; first homebrew title screen; commit its frame hash as golden (never the ROM)
 - [ ] PR M3 ready. Create `m4-system`.
 
@@ -198,6 +198,10 @@ the docs, test-harness surprises.
 - 2026-11-17 [ppu] Timing convention: `(scanline, dot)` is the dot just executed; `tick = dotEvents ∘ advance`; `Step.lean` should compose `dotEvents (render (advance s))`. A CPU access on a state at (241,0) falls one PPU clock before vblank set. Background ordering: read `ppuAddrBg s` before `bgDot`; `bgPixel` after `bgDot` gives column `dot−1`. Sprites: `pixel` and `evalDot` on dots 1–256 of lines 0–239 (bgPixel taken before shifters move), `fetchDot` on 257–320; sprite-0 hit set while `dot = x+1`.
 - 2026-11-17 [ppu] Known gaps: sprite evaluation ignores OAMADDR≠0 at the start of evaluation (corruption corner case); `$2007` during-rendering coarse X/Y increment glitch and PPUMASK greyscale on palette reads are not modelled in `read2007`; four-screen VRAM not modelled.
 - 2026-11-17 [lean] Mixing `>>>`/`<<<` with `|||`/`&&&` makes literals default to `Nat` ("failed to synthesize HAnd UInt16 Nat") — bind sub-terms with `let x : UInt16 := …` or annotate literals. Plain `decide` on `Rat` gets stuck; `decide +kernel` works. `lake env lean --run` uses the last built `.olean` — `lake build` after every edit.
+- 2026-11-17 [ppu] **Hardware vs doc:** the odd-frame dot skip samples "rendering enabled" at the end of pre-render dot 338 (not 339 as `Timing.lean` said); blargg `10-even_odd_timing` passes only with 338 (337/339 fail #2/#3). Modelled with `renderLatch` set at (261,338).
+- 2026-11-17 [system] CPU/PPU interleave: 2 PPU dots → CPU bus access → 1 dot → `Core.complete` with the current NMI line. 0/1/3 pre-dots fail `ppu_vbl_nmi` 05–08. Minimal System runs ~2.1 M CPU cycles/s (~1.2× realtime) before any perf work; blargg PPU suite ~24 s; full `lake test` ~70 s.
+- 2026-11-17 [system] RAM/CIRAM/palette are `ByteArray` with size fields (`ram_size` etc.) for `Fin`-indexed, check-free access. APU registers read as open bus, writes ignored (M5). OAM DMA simple (513/514, CPU not clocked) — M4 DMA item / T-SYS-2.
+- 2026-11-17 [rules] `get!`/`[i]!` are panicking accessors — treat them as `panic!` under `Nes/`; use total reads (`if h : i < a.size then a[i] else 0`, `getD`).
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -209,6 +213,7 @@ the docs, test-harness surprises.
 - 2026-11-17 Unstable opcode `$AB`: SingleStepTests behaviour kept (PLAN §10.3) over blargg's; the three blargg ROMs that test it are excluded from the run list.
 - 2026-11-17 Mapper interface is closure-free (`inductive MapperState` + `@[inline]` match dispatch, with `class Mapper σ` carrying the PLAN §5.2 operation set) instead of a structure of functions — PLAN §4 hot-path rules (no closures per cycle) take precedence. `cpuRead` takes the open-bus byte instead of returning `Option`.
 - 2026-11-17 PPU loopy `v`/`t` are `UInt16` (and `x`, `dot`, `scanline` UInt) with `BitVec` field views for proofs, instead of `BitVec 15` storage (Nat-backed, boxed at runtime); OAM, secondary OAM and the frame buffer are `ByteArray` (unboxed) rather than `Vector UInt8` (8 B/byte boxed) — a refinement of PLAN §10.4 for large byte buffers. ROM PRG/CHR are `ByteArray` with `Fin size` bank offsets. Emphasis is one byte per frame, not per pixel.
+- 2026-11-17 System RAM/CIRAM/palette and PPU buffers use `ByteArray` with size invariants rather than `Vector UInt8 n` (PLAN §10.4) — unboxed bytes for speed, still `Fin`-indexed and total. The `Nes` structure is `Nes.System.Nes`.
 
 ## Tick log (keep the last 20 lines only)
 _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
@@ -233,3 +238,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M3  started milestone (draft PR #4, base `m2-cpu-micro`)
 - 2026-11-17  M3  Bus/Map+OpenBus+T-BUS-1, Cart/Ines+NROM+T-CART-1/2+T-BUS-2, Controller, PPU Types/Registers/Loopy+T-PPU-2; 150 theorems
 - 2026-11-17  M3  PPU Timing+T-PPU-1/5, Background (0 mismatches), Sprites+Render (4842 checks), $2007+T-PPU-7; 165 theorems
+- 2026-11-17  M3  Frontend palette/PNG/PPM/hash; Ppu.Step + minimal System; blargg PPU 26/27; renderLatch at (261,338) from even_odd_timing
