@@ -11,7 +11,9 @@ between ticks and across context compaction — treat it as the program counter.
 - Follow PLAN.md as written, including the §10 decisions. No scope changes; if the plan is
   wrong, record it under "Decisions log" in PROGRESS.md with the fix, then apply the fix.
 - One milestone = one PR, stacked: branch `m<k>-…` from the previous milestone branch, PR
-  base = that branch (M0 → `main`). Never merge a PR. Never push to `main`.
+  base = that branch (M0 → `main`). The PR is opened as a **draft at milestone start**,
+  every commit is pushed to it as it lands, and it is marked **ready for review only at
+  milestone close**. Never merge a PR. Never push to `main`.
 - The only permitted force push is `--force-with-lease` on the *current milestone branch*
   right after rebasing the stack because its base was merged.
 - No `sorry`, no `native_decide`, no `partial`/`unsafe`/`panic!`/`IO` under `Nes/`.
@@ -24,9 +26,16 @@ between ticks and across context compaction — treat it as the program counter.
 ## Tick procedure
 
 1. **Orient** (cheap). Read PROGRESS.md in full. Run `git status -sb` and `git branch
-   --show-current`. If you are not on the current milestone branch, check it out (create it
-   from its base if it does not exist yet). Read only the PLAN.md section the next item
-   needs (`grep -n` to locate it).
+   --show-current`. If you are not on the current milestone branch, check it out. Read only
+   the PLAN.md section the next item needs (`grep -n` to locate it).
+
+   **Milestone start** — if the current milestone's branch does not exist yet, before any
+   other work: create it from its base; set "Current branch" in PROGRESS.md; commit that as
+   `M<k>: start milestone`; `git push -u origin <branch>`; open the PR immediately as a
+   draft so every later commit lands on it:
+   `gh pr create --draft --base <base> --title "M<k>: <title>" --body-file -` with a body
+   that holds the milestone's checklist copied from PROGRESS.md; record the PR number in
+   the table (status "in progress"). The PR exists before the first line of code.
 
 2. **Housekeeping** (cheap, before new work).
    - If the current milestone has a PR: `gh pr checks <n>` and `gh pr view <n> --comments`.
@@ -76,16 +85,20 @@ between ticks and across context compaction — treat it as the program counter.
    ones the subagents reported); append one tick-log line and trim the log to 20 lines;
    update benchmarks/deferred theorems if relevant. Then commit — one commit per item,
    staging that item's files, message `M<k>: <what>`; PROGRESS.md goes in the last commit
-   of the tick — and `git push -u origin <branch>`. If this milestone has no PR yet, open one now as a draft:
-   `gh pr create --draft --base <base> --title "M<k>: <title>" --body-file -` and record the
-   number in the table.
+   of the tick — and push to the milestone branch after every commit, so each one shows up
+   on the draft PR as it lands. Finally refresh the PR body with the milestone's current
+   checklist (`gh pr edit <n> --body-file -`) so progress is readable on GitHub without
+   opening the repo. (Safety net: if the milestone somehow has no PR, open the draft now as
+   in step 1.)
 
 7. **Milestone close** — when the last item is ticked, check the definition of done in
    PROGRESS.md (build, tests, no sorry, axiom registry, headline theorems closed). If it
-   holds: write the PR body (what was built, theorems closed, theorems deferred,
-   benchmarks), `gh pr ready <n>`, mark the row "ready for review", create the next
-   milestone branch from this one, set "Current milestone"/"Current branch"/"Next action",
-   commit and push. If it does not hold, add the missing work as checklist items instead.
+   holds: write the final PR body (what was built, theorems closed, theorems deferred,
+   benchmarks, the ticked checklist), `gh pr ready <n>`, mark the row "ready for review".
+   Then start the next milestone right away: set "Current milestone"/"Next action", and
+   run the milestone-start steps from step 1 (branch from this one, bootstrap commit,
+   push, draft PR). If the definition of done does not hold, add the missing work as
+   checklist items instead and stay on this milestone.
 
 8. **Blocked?** If progress needs the user (auth failure, a decision the plan does not
    cover, a dependency that cannot be fetched), set "Blocked: yes — <why> — <what the user

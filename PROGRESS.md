@@ -7,14 +7,17 @@ Keep this file small: trim the tick log, never paste build output here.
 ## Resume here
 
 - **Current milestone:** M0
-- **Current branch:** _(none yet — create `m0-scaffold` from `main`)_
-- **Next action:** M0 item 1 — `lake init`, toolchain pin, Lake targets.
+- **Current branch:** _(none yet — milestone start: create `m0-scaffold` from `main`, bootstrap commit, draft PR)_
+- **Next action:** M0 milestone start, then M0 item 1 — `lake init`, toolchain pin, Lake targets.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
 
 Each milestone is one PR. Branch from the previous milestone's branch; PR base = that
-branch (M0's base is `main`). Draft PR opened at milestone start, marked ready at close.
+branch (M0's base is `main`). The draft PR is opened at milestone start — right after the
+`M<k>: start milestone` bootstrap commit, before any code — every commit is pushed to it
+as it lands, its body mirrors the checklist below, and it is marked ready for review only
+when the milestone's definition of done holds.
 
 | M | Title | Plan phases | Branch | Base | PR | Status |
 |---|---|---|---|---|---|---|
@@ -47,7 +50,7 @@ Parallel tracks: after items 1–2 land (they define the Lake layout), items 3�
 - [ ] `scripts/fetch-testdata.sh`: SingleStepTests `nes6502`, `nestest.nes` + `nestest.log`, blargg suites; pinned commits; `testdata/` gitignored
 - [ ] GitHub Actions: build, test, axiom check, `grep -rn sorry Nes/` must be empty; `.lake` cache
 - [ ] README: build/run/test instructions; link PLAN.md and PROGRESS.md
-- [ ] Open draft PR (base `main`), CI green → mark ready. Create `m1-cpu-isa` from here.
+- [ ] CI green on the draft PR → mark ready. Create `m1-cpu-isa` from here.
 
 ### M1 — nestest green (Phase 1)
 Parallel tracks: {Types → Alu → Alu proofs} ∥ {Decode → Decode proofs} ∥ {Harte JSON loader, Nestest log formatter (against a stub `State`)}; then Isa (needs Alu + Decode) → Isa proofs ∥ Harte sweep ∥ nestest; T-CPU-8 ∥ benchmark.
