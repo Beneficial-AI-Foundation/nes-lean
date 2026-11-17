@@ -26,7 +26,7 @@ when the milestone's definition of done holds.
 | M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | #3 | ready for review |
 | M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | #4 | ready for review |
 | M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | #5 | ready for review |
-| M5 | Sounds right | 6 | `m5-apu` | `m4-system` | #6 | in progress |
+| M5 | Sounds right | 6 | `m5-apu` | `m4-system` | #6 | ready for review |
 | M6 | The PPU theorem | 8 | `m6-ppu-theorem` | `m5-apu` | — | not started |
 | M7 | Verified 6502 programs | 10 | `m7-hoare` | `m6-ppu-theorem` | — | not started |
 
@@ -117,7 +117,7 @@ Parallel tracks: {FrameCounter + T-APU-1 + DMC DMA wiring} ∥ {pulse/triangle/n
 - [x] `Apu/Dmc.lean` + T-APU-3
 - [x] `Apu/Mixer.lean` + T-APU-2; WAV output in CLI
 - [x] blargg `apu_test`, `dmc_dma_during_read4`, `apu_reset` green — apu_test 8/8, dmc_dma_during_read4 5/5, apu_reset 6/6 (+ blargg_apu_2005 11/11); `sprdma_and_dmc_dma` ×2 known-fail (expected table undocumented)
-- [ ] PR M5 ready. Create `m6-ppu-theorem`.
+- [x] PR M5 ready. Create `m6-ppu-theorem`.
 
 ### M6 — The PPU theorem (Phase 8)
 Parallel tracks: {Declarative renderer → shifter invariant → background half} ∥ {T-PPU-3} ∥ {T-PPU-4}; then sprite half + mux (needs all three).
@@ -274,3 +274,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M5  APU components: FrameCounter+T-APU-1, channels+units (LFSR period proved), DMC+T-APU-3, Mixer+T-APU-2 (table error bounds), WAV; 237 theorems
 - 2026-11-17  M5  APU composed + wired (DMC DMA), --wav, blargg APU 29/32 (double_2007_read, sprdma ×2 known-fail); 136 fps; golden unchanged
 - 2026-11-17  M5  double_2007_read fixed (back-to-back $2007 refill delay); blargg APU 30/30; 240 theorems; all M5 items ticked
+- 2026-11-17  M5  CI green on e963a28; definition of done holds; PR #6 marked ready
