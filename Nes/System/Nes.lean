@@ -191,10 +191,24 @@ nametable underneath; the palette is `palPeek`). -/
     { n with pal := n.pal.set i.val (v &&& 0x3F) (fin_lt_size n.pal_size i),
              pal_size := by rw [ByteArray.size_set']; exact n.pal_size }
 
+/-- `Ppu.dot` reading this console's memories. Deliberately *not* `@[inline]`: compiled on its
+own, its body gets `Ppu.dot` specialized to the concrete readers (no closures, no `lean_apply`),
+with the specialization closing over `cart ciram pal` only — not the whole `Nes`, which would
+keep `ppu` shared during the dot and copy the PPU state (and its 60 KiB frame) on every dot. -/
+def ppuDotWith (cart : Cart) (ciram : ByteArray) (h : ciram.size = 2048) (pal : ByteArray)
+    (hp : pal.size = 32) (ppu : Ppu.State) : Ppu.State :=
+  Ppu.dot (fun a => ppuPeek cart ciram h a) (fun i => palPeek pal hp i) ppu
+
+/-- `Cart.ppuA12`, out of line: compiled on its own (cart owned and unshared on entry) the cart,
+cart-state and mapper cells are updated in place; inlined into `ppuDot`, the nested projections
+are hoisted above the outer cell's reset, so the inner cells look shared and are reallocated
+on every dot. -/
+@[noinline] def cartA12 (c : Cart) (b : Bool) : Cart := c.ppuA12 b
+
 /-- One PPU dot; the cartridge then sees A12. -/
 @[inline] def ppuDot (n : Nes) : Nes :=
-  let ppu := Ppu.dot (ppuPeek n.cart n.ciram n.ciram_size) (palPeek n.pal n.pal_size) n.ppu
-  { n with ppu, cart := n.cart.ppuA12 ppu.a12,
+  let ppu := ppuDotWith n.cart n.ciram n.ciram_size n.pal n.pal_size n.ppu
+  { n with ppu, cart := cartA12 n.cart ppu.a12,
            frame := if ppu.dot == 0 && ppu.scanline == 0 then n.frame + 1 else n.frame }
 
 /-- `k` PPU dots (`k ≤ 3`). -/
@@ -210,7 +224,8 @@ nametable underneath; the palette is `palPeek`). -/
     let i := ramIndex a
     (n, n.ram[i.val]'(fin_lt_size n.ram_size i))
   else if a < 0x4000 then
-    let rd := Ppu.State.read2007 (ppuPeek n.cart n.ciram n.ciram_size) (palPeek n.pal n.pal_size)
+    let rd := Ppu.State.read2007 (fun a => ppuPeek n.cart n.ciram n.ciram_size a)
+      (fun i => palPeek n.pal n.pal_size i)
     let (ppu, v) := n.ppu.cpuRead rd a
     ({ n with ppu }, v)
   else if a < 0x4018 then

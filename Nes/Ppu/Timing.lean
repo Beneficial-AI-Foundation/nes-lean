@@ -71,8 +71,10 @@ namespace State
 /-- NMI output line as seen by the CPU (`true` = asserted). The CPU latches a rising edge. -/
 @[inline] def nmiLine (s : State) : Bool := s.nmiOut
 
-/-- Advance `(scanline, dot, frameOdd)` by one PPU clock, with the odd-frame skip. -/
-@[inline] def advance (s : State) : State :=
+/-- Advance `(scanline, dot, frameOdd)` by one PPU clock, with the odd-frame skip. (Out of
+line: compiled on its own the common `dot + 1` update is in place; inlined into `Ppu.dot` it
+landed in a join point and allocated a fresh `State` per dot.) -/
+@[noinline] def advance (s : State) : State :=
   if s.dot == 339 && s.scanline == 261 && s.frameOdd && s.renderLatch then
     { s with dot := 0, scanline := 0, frameOdd := !s.frameOdd }
   else if s.dot == 340 then

@@ -39,19 +39,20 @@ namespace Nes.Ppu.Render
 
 open Nes.Ppu Nes.Ppu.Sprites
 
-/-- First opaque sprite slot at column `x` (packed, see module doc), scanning slots `i..n-1`. -/
-def spritePixelAux (s : State) (x : UInt8) (n : Nat) : Nat → Nat → UInt8
+/-- First opaque sprite slot at column `x` (packed, see module doc), scanning slots `i..n-1`
+(slot indices as `UInt8`: this runs for every visible pixel). -/
+def spritePixelAux (s : State) (x : UInt8) (n : UInt8) : Nat → UInt8 → UInt8
   | 0, _ => 0
   | fuel + 1, i =>
     if i ≥ n then 0 else
-    let sx := getByte s.sprX i
+    let sx := getByte s.sprX i.toNat
     if x ≥ sx && x - sx < 8 then
       let sh : UInt8 := 7 - (x - sx)
-      let lo : UInt8 := (getByte s.sprPatLo i >>> sh) &&& (1 : UInt8)
-      let hi : UInt8 := (getByte s.sprPatHi i >>> sh) &&& (1 : UInt8)
+      let lo : UInt8 := (getByte s.sprPatLo i.toNat >>> sh) &&& (1 : UInt8)
+      let hi : UInt8 := (getByte s.sprPatHi i.toNat >>> sh) &&& (1 : UInt8)
       let pat : UInt8 := lo ||| (hi <<< (1 : UInt8))
       if pat != 0 then
-        let a := getByte s.sprAttr i
+        let a := getByte s.sprAttr i.toNat
         let pal : UInt8 := (a &&& (3 : UInt8)) <<< (2 : UInt8)
         let pri : UInt8 := (a &&& (0x20 : UInt8)) >>> (1 : UInt8)
         let z : UInt8 := if i == 0 && s.spr0Line then 0x80 else 0
@@ -61,7 +62,7 @@ def spritePixelAux (s : State) (x : UInt8) (n : Nat) : Nat → Nat → UInt8
 
 /-- Packed sprite pixel at column `x` (0 = transparent). -/
 @[inline] def spritePixel (s : State) (x : UInt8) : UInt8 :=
-  spritePixelAux s x (min s.sprCount.toNat 8) 8 0
+  spritePixelAux s x (min s.sprCount 8) 8 0
 
 /-- Background/sprite priority mux: palette index 0–31 from a 4-bit background index and a
 packed sprite pixel. -/
@@ -72,24 +73,35 @@ packed sprite pixel. -/
   else if bgOpaque then bg &&& 0x0F
   else 0
 
-/-- Output pixel `x = dot - 1` of visible line `scanline` (see module doc). -/
-@[specialize] def pixel (palRd : UInt8 → UInt8) (bgPx : UInt8) (s : State) : State :=
-  let d := s.dot
-  let y := s.scanline
-  if d == 0 || d > 256 || y ≥ 240 then s else
-  let x := (d - 1).toUInt8
-  let idx := (y.toNat <<< 8) + x.toNat
+/-- Colour and sprite-0 hit of visible pixel `x` (see module doc), packed as
+`colour ||| (0x4000 if hit)`: the branchy part of `pixel`, kept out of line (`@[noinline]`) and
+returning one scalar so that `pixel` itself is a single straight-line `{ s with … }`, which the
+compiler turns into an in-place update of `s` (a state update after branches lands in a join
+point, where Lean's reset/reuse does not look, and allocates a fresh `State` per pixel). With
+rendering disabled `showBg = showSpr = false`, so `bg = spr = 0` and there is no hit. -/
+@[specialize, noinline] def pixelOut (palRd : UInt8 → UInt8) (bgPx : UInt8) (s : State)
+    (x : UInt8) : UInt16 :=
   let grey : UInt8 := if s.mask &&& 0x01 != 0 then 0x30 else 0x3F
   if !s.rendering then
     let c := if s.v &&& 0x3F00 == 0x3F00 then palRd (s.v.toUInt8 &&& 0x1F) else palRd 0
-    { s with frame := s.frame.set! idx (c &&& 0x3F &&& grey) }
+    (c &&& 0x3F &&& grey).toUInt16
   else
   let left := x < 8
   let bg := if s.showBg && (!left || s.bgLeft) then bgPx &&& 0x0F else 0
   let spr := if s.showSpr && (!left || s.sprLeft) then spritePixel s x else 0
   let hit := spr &&& 0x80 != 0 && bg &&& 3 != 0 && x != 255
   let c := palRd (muxIndex bg spr) &&& 0x3F &&& grey
-  { s with frame := s.frame.set! idx c,
-           status := if hit then s.status ||| 0x40 else s.status }
+  c.toUInt16 ||| (if hit then 0x4000 else 0)
+
+/-- Output pixel `x = dot - 1` of visible line `scanline` (see module doc). -/
+@[specialize] def pixel (palRd : UInt8 → UInt8) (bgPx : UInt8) (s : State) : State :=
+  let d := s.dot
+  let y := s.scanline
+  if d == 0 || d > 256 || y ≥ 240 then s else
+  let x := (d - 1).toUInt8
+  let idx := (y.toUInt32 * 256 + x.toUInt32).toNat
+  let r := pixelOut palRd bgPx s x
+  { s with frame := s.frame.set! idx r.toUInt8,
+           status := s.status ||| (r >>> 8).toUInt8 }
 
 end Nes.Ppu.Render

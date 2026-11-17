@@ -89,9 +89,9 @@ macro "keeps_tac" : tactic => `(tactic| (constructor <;>
     apply_ite State.oam, apply_ite State.oamAddr, apply_ite State.mask, ite_self]))
 
 theorem keeps_bgDot (rd) (s : State) : Keeps s (bgDot rd s) := by
-  simp only [bgDot, Bg.bgShift, Bg.bgReload]; keeps_tac
+  simp only [bgDot]; keeps_tac
 theorem keeps_evalDot (s : State) : Keeps s (Sprites.evalDot s) := by
-  simp only [Sprites.evalDot, Sprites.evalAct]; keeps_tac
+  simp only [Sprites.evalDot]; keeps_tac
 theorem keeps_fetchDot (rd) (s : State) : Keeps s (Sprites.fetchDot rd s) := by
   simp only [Sprites.fetchDot]; keeps_tac
 theorem keeps_pixel (pr) (b) (s : State) : Keeps s (Render.pixel pr b s) := by

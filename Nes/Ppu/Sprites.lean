@@ -86,42 +86,70 @@ def evalSpec (oam : ByteArray) (line h : Nat) : List Nat × Bool :=
   let y16 := y.toUInt16
   y16 ≤ line && line - y16 < h
 
-/-- One even-dot evaluation action on the latched byte. -/
-@[inline] def evalAct (s : State) : State :=
+/-- Pack the evaluation registers and one secondary-OAM store (index `i` < 32, value `b`) for
+`evalDot`: `n | m << 8 | sec << 16 | latch << 24 | status << 32 | i << 40 | b << 48 |
+spr0 << 56`. -/
+@[inline] def packEval (n m sec latch status : UInt8) (spr0 : Bool) (i b : UInt8) : UInt64 :=
+  n.toUInt64 ||| (m.toUInt64 <<< 8) ||| (sec.toUInt64 <<< 16) ||| (latch.toUInt64 <<< 24) |||
+    (status.toUInt64 <<< 32) ||| ((i &&& 0x1F).toUInt64 <<< 40) ||| (b.toUInt64 <<< 48) |||
+    ((if spr0 then 1 else 0 : UInt64) <<< 56)
+
+/-- One even-dot evaluation action on the latched byte (dots 66, 68, …, 256), as `packEval`:
+with secondary OAM not full the latched byte is copied to `secOam[evalSec]` (and kept if it is
+a hit or a later byte of a hit), else the hardware's overflow walk. Without a store the packed
+store rewrites `secOam[0]` with its own value. -/
+@[inline] def evalAct (s : State) : UInt64 :=
   let n := s.evalN
-  if n ≥ 64 then s else
   let m := s.evalM
   let b := s.evalLatch
+  let keep := packEval n m s.evalSec b s.status s.spr0Next 0 (getByte s.secOam 0)
+  if n ≥ 64 then keep else
   let hit := inRange b s.scanline (height s)
   if s.evalSec < 32 then
-    let sec := s.secOam.set! s.evalSec.toNat b
     if m == 0 && !hit then
-      { s with secOam := sec, evalN := n + 1 }
+      packEval (n + 1) m s.evalSec b s.status s.spr0Next s.evalSec b
     else
       let spr0 := s.spr0Next || (m == 0 && n == 0)
       let m' := m + 1
-      if m' == 4 then
-        { s with secOam := sec, evalSec := s.evalSec + 1, evalM := 0, evalN := n + 1,
-                 spr0Next := spr0 }
-      else
-        { s with secOam := sec, evalSec := s.evalSec + 1, evalM := m', spr0Next := spr0 }
+      if m' == 4 then packEval (n + 1) 0 (s.evalSec + 1) b s.status spr0 s.evalSec b
+      else packEval n m' (s.evalSec + 1) b s.status spr0 s.evalSec b
   else if hit then
-    { s with status := s.status ||| 0x20, evalN := 64 }
+    packEval 64 m s.evalSec b (s.status ||| 0x20) s.spr0Next 0 (getByte s.secOam 0)
   else
-    { s with evalN := n + 1, evalM := (m + 1) &&& 3 }
+    packEval (n + 1) ((m + 1) &&& 3) s.evalSec b s.status s.spr0Next 0 (getByte s.secOam 0)
+
+/-- The scalar effect of evaluation dot `dot` (1–256), as `packEval`: dots 2, 4, …, 64 clear
+`secOam[dot/2 - 1]` to `$FF`; odd dots from 65 latch `oam[4·evalN + evalM]` (dot 65 first
+resets `evalN evalM evalSec spr0Next`); even dots from 66 run `evalAct`. -/
+@[noinline] def evalStep (s : State) : UInt64 :=
+  let d := s.dot
+  if d ≤ 64 then
+    if d &&& 1 == 0 then
+      packEval s.evalN s.evalM s.evalSec s.evalLatch s.status s.spr0Next (d / 2 - 1).toUInt8 0xFF
+    else
+      packEval s.evalN s.evalM s.evalSec s.evalLatch s.status s.spr0Next 0 (getByte s.secOam 0)
+  else if d &&& 1 == 1 then
+    let first := d == 65
+    let n := if first then 0 else s.evalN
+    let m := if first then 0 else s.evalM
+    let sec := if first then 0 else s.evalSec
+    let spr0 := if first then false else s.spr0Next
+    packEval n m sec (getByte s.oam (4 * n.toNat + m.toNat)) s.status spr0 0 (getByte s.secOam 0)
+  else evalAct s
 
 /-- Sprite evaluation work for the current `dot` (1–256) of a visible line. Call before the
-timing tick advances `dot`, only when rendering is enabled. -/
-@[inline] def evalDot (s : State) : State :=
+timing tick advances `dot`, only when rendering is enabled. Out of line, with the branchy part in
+`evalStep` (packed scalars) and one straight-line update, so the state is updated in place (an
+update after branches lands in a join point, where Lean's reset/reuse does not look). -/
+@[noinline] def evalDot (s : State) : State :=
   let d := s.dot
   if d == 0 || d > 256 then s
-  else if d ≤ 64 then
-    if d &&& 1 == 0 then { s with secOam := s.secOam.set! (d / 2 - 1).toNat 0xFF } else s
-  else if d &&& 1 == 1 then
-    let s := if d == 65 then { s with evalN := 0, evalM := 0, evalSec := 0, spr0Next := false }
-             else s
-    { s with evalLatch := getByte s.oam (4 * s.evalN.toNat + s.evalM.toNat) }
-  else evalAct s
+  else
+    let r := evalStep s
+    { s with secOam := s.secOam.set! ((r >>> 40) &&& 0x1F).toNat (r >>> 48).toUInt8,
+             evalN := r.toUInt8, evalM := (r >>> 8).toUInt8, evalSec := (r >>> 16).toUInt8,
+             evalLatch := (r >>> 24).toUInt8, status := (r >>> 32).toUInt8,
+             spr0Next := (r >>> 56) &&& 1 != 0 }
 
 /-! ### Fetches -/
 

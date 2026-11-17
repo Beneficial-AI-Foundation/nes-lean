@@ -166,8 +166,9 @@ def init (h : Header) : State := { mirH := h.mirroring == .horizontal }
   { s with irqCounter := c, irqReload := false,
            irqPending := s.irqPending || (c == 0 && s.irqEnabled) }
 
-/-- The PPU drives A12 to `b` this dot: filtered rising edges clock the IRQ counter. -/
-@[inline] def ppuA12 (b : Bool) (s : State) : State :=
+/-- The PPU drives A12 to `b` this dot: filtered rising edges clock the IRQ counter. (Out of
+line: inlined under the `MapperState` match, `s` looked shared and was reallocated per dot.) -/
+@[noinline] def ppuA12 (b : Bool) (s : State) : State :=
   if b then
     if s.lowDots == 0 then s
     else if a12Gap ≤ s.lowDots then clock { s with lowDots := 0 }
