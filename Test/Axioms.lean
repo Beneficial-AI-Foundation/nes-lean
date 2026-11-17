@@ -99,7 +99,13 @@ def registry : List Name :=
   , `Nes.Cpu.Proofs.T_CPU_8_9a_txs
   , `Nes.Cpu.Proofs.T_CPU_8_a7_lax_zp
   , `Nes.Cpu.Proofs.T_CPU_8_c7_dcp_zp
-  , `Nes.Cpu.Proofs.T_CPU_8_02_jam ]
+  , `Nes.Cpu.Proofs.T_CPU_8_02_jam
+  , `Nes.Cpu.Proofs.T_CPU_6_pull_push
+  , `Nes.Cpu.Proofs.T_CPU_6_stack_page
+  , `Nes.Cpu.Proofs.T_CPU_6_pha_pla
+  , `Nes.Cpu.Proofs.T_CPU_6_php_plp
+  , `Nes.Cpu.Proofs.T_CPU_6_jsr_rts
+  , `Nes.Cpu.Proofs.T_CPU_6_jsr_rts_direct ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
