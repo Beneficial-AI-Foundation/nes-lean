@@ -1,5 +1,6 @@
 import Nes.Cart.Ines
 import Nes.Cart.Mappers.NROM
+import Nes.Cart.Mappers.CNROM
 
 /-!
 # `Nes.Cart.Mapper` — the mapper interface and the cartridge
@@ -68,41 +69,61 @@ instance : Mapper Nrom.State where
   irq := Nrom.irq
   mirroring := Nrom.mirroring
 
+instance : Mapper Cnrom.State where
+  prgOffset := Cnrom.prgOffset
+  chrOffset := Cnrom.chrOffset
+  prgRamReadable _ := true
+  prgRamWritable _ := true
+  regWrite := Cnrom.regWrite
+  ppuA12 := Cnrom.ppuA12
+  irq := Cnrom.irq
+  mirroring := Cnrom.mirroring
+
 /-- Register state of the cartridge's mapper; one constructor per supported mapper. -/
 inductive MapperState where
   | nrom (s : Nrom.State)
+  | cnrom (s : Cnrom.State)
   deriving DecidableEq, Repr, Inhabited
 
 namespace MapperState
 
 @[inline] def prgOffset (rom : Rom) : MapperState → UInt16 → Fin rom.prg.size
   | .nrom s, a => Mapper.prgOffset rom s a
+  | .cnrom s, a => Mapper.prgOffset rom s a
 
 @[inline] def chrOffset (rom : Rom) : MapperState → UInt16 → Fin rom.chrLen
   | .nrom s, a => Mapper.chrOffset rom s a
+  | .cnrom s, a => Mapper.chrOffset rom s a
 
 @[inline] def prgRamReadable : MapperState → Bool
   | .nrom s => Mapper.prgRamReadable s
+  | .cnrom s => Mapper.prgRamReadable s
 
 @[inline] def prgRamWritable : MapperState → Bool
   | .nrom s => Mapper.prgRamWritable s
+  | .cnrom s => Mapper.prgRamWritable s
 
 @[inline] def regWrite (rom : Rom) : MapperState → UInt16 → UInt8 → MapperState
   | .nrom s, a, v => .nrom (Mapper.regWrite rom s a v)
+  | .cnrom s, a, v => .cnrom (Mapper.regWrite rom s a v)
 
 @[inline] def ppuA12 (b : Bool) : MapperState → MapperState
   | .nrom s => .nrom (Mapper.ppuA12 b s)
+  | .cnrom s => .cnrom (Mapper.ppuA12 b s)
 
 @[inline] def irq : MapperState → Bool
   | .nrom s => Mapper.irq s
+  | .cnrom s => Mapper.irq s
 
 @[inline] def mirroring (rom : Rom) : MapperState → Mirroring
   | .nrom s => Mapper.mirroring rom s
+  | .cnrom s => Mapper.mirroring rom s
 
 /-- Power-on mapper state for the mapper number in the header. -/
 def ofHeader (h : Header) : Except String MapperState :=
   match h.mapper with
   | 0 => .ok (.nrom {})
+  | 3 => .ok (.cnrom {})
   | n => .error s!"unsupported mapper {n}"
 
 end MapperState

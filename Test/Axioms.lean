@@ -199,7 +199,12 @@ def registry : List Name :=
   , `Nes.Ppu.Proofs.T_PPU_5_retrigger
   , `Nes.Ppu.Proofs.T_PPU_5_toggle
   , `Nes.Ppu.Proofs.T_PPU_5_retrigger_cpuWrite
-  , `Nes.Ppu.Proofs.T_PPU_5_suppress ]
+  , `Nes.Ppu.Proofs.T_PPU_5_suppress
+  , `Nes.Cart.Cnrom.prgOffset_lt
+  , `Nes.Cart.Cnrom.chrOffset_lt
+  , `Nes.Cart.Cnrom.regWrite_bank_le
+  , `Nes.Cart.Cnrom.regWrite_bank_lt
+  , `Nes.Cart.Cnrom.chrOffset_banked ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

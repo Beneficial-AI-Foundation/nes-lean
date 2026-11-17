@@ -52,11 +52,6 @@ theorem run_rom (c : Cart) (ops : List BusOp) : (c.run ops).rom = c.rom := by
   | nil => rfl
   | cons op ops ih => simp only [run, List.foldl_cons] at *; rw [ih, step_rom]
 
--- While NROM is the only mapper, `MapperState` has a single inhabitant and simp closes the
--- goal without `hm`; the hypothesis and simp lemmas are what the proof needs once M4 adds
--- constructors.
-set_option linter.unusedVariables false in
-set_option linter.unusedSimpArgs false in
 theorem step_mapper_nrom (c : Cart) (op : BusOp) (s : Nrom.State)
     (hm : c.st.mapper = .nrom s) : ∃ s', (c.step op).st.mapper = .nrom s' := by
   cases op <;>
@@ -82,7 +77,7 @@ theorem run_cpuRead_prg_nrom (c : Cart) (ops : List BusOp) (s : Nrom.State)
   obtain ⟨drom, dst⟩ := d
   simp only at hr h' ⊢
   subst hr
-  simp [MapperState.prgOffset, Mapper.prgOffset, Nrom.prgOffset]
+  simp [h', MapperState.prgOffset, Mapper.prgOffset, Nrom.prgOffset]
 
 theorem run_ppuRead_chr_nrom (c : Cart) (ops : List BusOp) (s : Nrom.State)
     (hm : c.st.mapper = .nrom s) (hchr : c.rom.chr.size ≠ 0) (a : UInt16) :
@@ -96,7 +91,7 @@ theorem run_ppuRead_chr_nrom (c : Cart) (ops : List BusOp) (s : Nrom.State)
   obtain ⟨drom, dst⟩ := d
   simp only at hr h' ⊢
   subst hr
-  simp [hchr, MapperState.chrOffset, Mapper.chrOffset, Nrom.chrOffset]
+  simp [h', hchr, MapperState.chrOffset, Mapper.chrOffset, Nrom.chrOffset]
 
 end Cart
 
