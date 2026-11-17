@@ -74,3 +74,4 @@ import Nes.Apu.Apu
 import Nes.Ppu.Declarative
 import Nes.Ppu.Proofs.Sprite0
 import Nes.Ppu.Proofs.Shifter
+import Nes.Ppu.Proofs.Sprites
