@@ -1,0 +1,60 @@
+name: CI
+
+# Push to any branch and PRs against any base: milestone PRs are stacked on
+# non-main bases, so filtering on `main` would skip most of them.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build, test, invariants
+    runs-on: ubuntu-latest
+    # Never pass -march=native in CI (PLAN.md §4): artifacts must be portable.
+    steps:
+      - uses: actions/checkout@v4
+
+      # Invariants first: cheap, and fail fast before the Lean build.
+      # grep exits 1 on "no match" (= success here); exit 0 means a hit (= failure).
+      - name: No `sorry` / `native_decide` under Nes/
+        run: |
+          if grep -rn "sorry" Nes/; then
+            echo "::error::'sorry' found under Nes/"
+            exit 1
+          fi
+          if grep -rnw "native_decide" Nes/; then
+            echo "::error::'native_decide' found under Nes/"
+            exit 1
+          fi
+
+      # TODO("enable once tests consume testdata (M1)"): fetch nestest / Harte
+      # (CPU subset) / blargg test ROMs, cached on the fetch script's hash.
+      # Flags of scripts/fetch-testdata.sh are not fixed yet; check before enabling.
+      # - name: Cache testdata
+      #   if: hashFiles('scripts/fetch-testdata.sh') != ''
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: testdata
+      #     key: testdata-${{ hashFiles('scripts/fetch-testdata.sh') }}
+      # - name: Fetch testdata
+      #   if: hashFiles('scripts/fetch-testdata.sh') != ''
+      #   run: bash scripts/fetch-testdata.sh
+
+      # elan + toolchain from lean-toolchain, `.lake` cache (actions/cache keyed
+      # on OS/arch/manifest/commit), `lake build`, then `lake test`.
+      #
+      # Axiom check: implemented as an elaboration-time check in Test/Axioms.lean,
+      # which is compiled as part of the `Test` driver. `lake test` builds that
+      # target, so a disallowed axiom (sorryAx, Lean.ofReduceBool, ...) fails here.
+      - name: Build, test (incl. axiom check via Test/Axioms.lean)
+        uses: leanprover/lean-action@v1.7.1
+        with:
+          auto-config: false
+          build: true
+          test: true
+          use-github-cache: true
