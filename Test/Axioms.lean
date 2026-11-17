@@ -280,7 +280,12 @@ def registry : List Name :=
   , `Nes.Ppu.Proofs.T_PPU_4_never_outside
   , `Nes.Ppu.Proofs.T_PPU_4_clear
   , `Nes.Ppu.Proofs.T_PPU_4_priority_independent
-  , `Nes.Ppu.Proofs.T_PPU_4_visible_at ]
+  , `Nes.Ppu.Proofs.T_PPU_4_visible_at
+  , `Nes.Ppu.Proofs.pixel_holds
+  , `Nes.Ppu.Proofs.bg_scanline
+  , `Nes.Ppu.Proofs.bg_scanline_bgRun
+  , `Nes.Ppu.Proofs.bg_scanline_ppuDot
+  , `Nes.Ppu.Proofs.prefetch ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

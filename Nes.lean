@@ -73,3 +73,4 @@ import Nes.Frontend.Wav
 import Nes.Apu.Apu
 import Nes.Ppu.Declarative
 import Nes.Ppu.Proofs.Sprite0
+import Nes.Ppu.Proofs.Shifter
