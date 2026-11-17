@@ -5,3 +5,4 @@ import Nes.Cpu.Decode
 import Nes.Cpu.Alu
 import Nes.Cpu.Proofs.Decode
 import Nes.Cpu.Proofs.Alu
+import Nes.Cpu.Isa
