@@ -26,3 +26,9 @@ import Nes.Ppu.Proofs.Loopy
 import Nes.Bus.Map
 import Nes.Bus.OpenBus
 import Nes.Bus.Proofs.Mirroring
+import Nes.Cart.Ines
+import Nes.Cart.Mapper
+import Nes.Cart.Mappers.NROM
+import Nes.Cart.Proofs.Ines
+import Nes.Cart.Proofs.Banks
+import Nes.Bus.Proofs.RomImmutable
