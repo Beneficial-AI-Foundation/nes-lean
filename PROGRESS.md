@@ -6,9 +6,9 @@ Keep this file small: trim the tick log, never paste build output here.
 
 ## Resume here
 
-- **Current milestone:** M2
-- **Current branch:** `m2-cpu-micro`
-- **Next action:** M2 close — CI green on the last commit, definition of done, final PR body, `gh pr ready 3`; then start M3 (`m3-ppu` from `m2-cpu-micro`).
+- **Current milestone:** M3
+- **Current branch:** `m3-ppu`
+- **Next action:** M3 batch: Bus/Map+OpenBus+T-BUS-1/2 ∥ Cart/Ines+NROM+T-CART-1/2 ∥ Input/Controller ∥ PPU Types/Registers/Loopy+T-PPU-2; then PPU Timing+T-PPU-1, Background, Sprites+Render, $2007/NMI.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -24,7 +24,7 @@ when the milestone's definition of done holds.
 | M0 | Scaffold | 0 | `m0-scaffold` | `main` | #1 | merged |
 | M1 | nestest green | 1 | `m1-cpu-isa` | `main` | #2 | ready for review |
 | M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | #3 | ready for review |
-| M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | — | not started |
+| M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | — | in progress |
 | M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | — | not started |
 | M5 | Sounds right | 6 | `m5-apu` | `m4-system` | — | not started |
 | M6 | The PPU theorem | 8 | `m6-ppu-theorem` | `m5-apu` | — | not started |
@@ -221,3 +221,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M2  T-CPU-7 attempt 2: mid-BRK hijack, opcode-derived IRQ masking, NMI latency from instruction start (15 cycles); 109 theorems; mid-instruction-edge latency left for attempt 3
 - 2026-11-17  M2  T-CPU-7 attempt 3: mid-instruction NMI latency (≤ rest + 15) incl. BRK/IRQ sequences; NMI-in-NMI-sequence sub-case deferred; 112 theorems; all M2 work items ticked
 - 2026-11-17  M2  CI green on f45bd06; definition of done holds (T-REF-1 closed); PR #3 marked ready
+- 2026-11-17  M3  started milestone (branch `m3-ppu`, base `m2-cpu-micro`)
