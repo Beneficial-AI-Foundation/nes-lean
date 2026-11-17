@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M5
 - **Current branch:** `m5-apu`
-- **Next action:** M5: `Apu/Apu.lean` (register file $4000–$4017, per-cycle tick composing frame counter/channels/DMC, mixer sample) wired into `System.stepCycle` (apuIrq, DMC DMA stall via `Dmc.dmaStall`, `apuHalf`), `nes run --wav`, then blargg `apu_test`, `dmc_dma_during_read4`, `apu_reset`.
+- **Next action:** M5: make `dmc_dma_during_read4/double_2007_read` pass (PPU `$2007` read-buffer behaviour on repeated reads during a DMC halt; attempt 1); optionally `sprdma_and_dmc_dma`; then PR M5 ready.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -112,11 +112,11 @@ Parallel tracks: {System stepCycle/Frame + T-SYS-1/3} ∥ {DMA + T-SYS-2} ∥ {S
 
 ### M5 — Sounds right (Phase 6)
 Parallel tracks: {FrameCounter + T-APU-1 + DMC DMA wiring} ∥ {pulse/triangle/noise units} ∥ {Dmc + T-APU-3} ∥ {Mixer + T-APU-2}; then WAV output → blargg APU suites.
-- [ ] `Apu/FrameCounter.lean` (4/5-step, IRQ) + T-APU-1; DMC DMA cycle stealing wired into `stepCycle` — _frame counter + T-APU-1 landed; remaining: compose the APU and wire it + DMC DMA into `stepCycle`_
+- [x] `Apu/FrameCounter.lean` (4/5-step, IRQ) + T-APU-1; DMC DMA cycle stealing wired into `stepCycle`
 - [x] Pulse ×2, triangle, noise, length counters, envelopes, sweeps
 - [x] `Apu/Dmc.lean` + T-APU-3
-- [ ] `Apu/Mixer.lean` + T-APU-2; WAV output in CLI — _mixer + T-APU-2 + WAV encoder/downsampler landed; remaining: `nes run --wav` once the APU is in the System_
-- [ ] blargg `apu_test`, `dmc_dma_during_read4`, `apu_reset` green
+- [x] `Apu/Mixer.lean` + T-APU-2; WAV output in CLI
+- [ ] blargg `apu_test`, `dmc_dma_during_read4`, `apu_reset` green — _apu_test 8/8, apu_reset 6/6 (+ blargg_apu_2005 11/11); `dmc_dma_during_read4` 4/5: `double_2007_read` fails (PPU back-to-back `$2007` reads during a DMC halt) — fix next_
 - [ ] PR M5 ready. Create `m6-ppu-theorem`.
 
 ### M6 — The PPU theorem (Phase 8)
@@ -143,6 +143,7 @@ _(fill in: ISA instr/s at M1; frames/s at M4 and after the perf pass)_
 - 2026-11-17 M1 ISA `step`, `nes --bench` (-O3, Apple M5 Max arm64, synthetic loop of LDA/ADC/STA abs,X/ROL/CMP/JSR/RTS/INX/DEX/BNE): **~35 M instr/s, ~115 M cycles/s, ~64× NTSC realtime** (median of 3).
   Generated C (`.lake/build/ir/Nes/Cpu/Isa.c`): memory written in place (`lean_array_fset`, no copies); per instruction ~3–4 small allocs: 2 `Prod` cells for `State × Mem × Nat` (Isa.lean:280), 1 pair from `exec` (Isa.lean:156), fresh `State` in `setZN` join points (65 sites), `Alu.RC` from `shiftOp` lambdas (Isa.lean:143); `Mem = Vector UInt8` is an array of boxed scalars (8 B/byte, `lean_unbox` per read); `AddrMode` `==` goes through `lean_nat_dec_eq`. M4 fixes: flat `StepOut` struct, `UInt` cycles, inline `exec`/`setZN`, enum shift op, `ByteArray`-backed memory with a `Vector` spec view, `match` instead of derived `BEq`.
 - 2026-11-17 M4 after perf pass, `nes run … --frames 600` (-O3, Apple M5 Max): **spritecans ~180 fps (3.0× realtime), BladeBuster (MMC3) ~170 fps (2.8×)** — from ~66/63 fps. Profile after: CPU interpreter in `stepCycle` 24%, `spritePixelAux` 8%, `Ppu.dot` 6.5%, `advance` 6.5%, `evalDot` 5%. Remaining per-cycle allocation: CPU path (`Cpu.State` rebuilds in Micro/Core, ~6%), sprite `fetchDot`, MMC3 inner state.
+- 2026-11-17 M5 with the APU running: spritecans **~136 fps (2.27× realtime)**, `--wav` ~133 fps (from ~180 without APU).
 
 ## Deferred theorems
 _(theorem id — why — what would unblock it)_
@@ -219,6 +220,10 @@ the docs, test-harness surprises.
 - 2026-11-17 [apu] Channel choices: ultrasonic triangle (period < 2) freezes the sequencer (holds level); sweep negative target clamps to 0; noise period table stored in CPU cycles (APU timer reloads `entry/2 − 1`); length halt stored in both `len.halt` and `env.loop`. DMC: timer counts CPU cycles; power-on `bufferEmpty` → first fetch requested immediately (no start-up delay); stall = 3 (get cycle) / 4 (put cycle) / 2 (during OAM DMA); edge cases at the end of OAM DMA left to integration.
 - 2026-11-17 [apu] Mixer runtime: `pulseTable` (31, exact, ≤ ½ LSB) + `tndTable` (203, NESdev approximation `163.67/(24329/k+100)`, ≤ 0.013 ≈ 1.3% FS vs exact); `mixSample` caps at 65535 (the approximate tables can sum to 65598). Exact mix max ≈ 0.99999935.
 - 2026-11-17 [lean] `omega` does not see through `UInt16`/`UInt8` atoms in v4.36 — work on `toNat` with helper lemmas, or `UInt16.toBitVec_inj.mp; simp; bv_omega`. `Nat.iterate` / `UInt16.sub_sub` don't exist in core. `#eval` via `lake env lean` works (only `--run` can't load the dylibs). `{ s with … }` inside a `∀ k, … →` theorem statement may fail to parse — wrap it in a def.
+- 2026-11-17 [apu] stepCycle order now: RESET latch → 2 dots → branch (DMC busy / OAM DMA / CPU) → APU tick → bus access → 1 dot → CPU complete → clock. APU must tick before the bus access ($4017 timing). DMC fetch halts the CPU on its next read cycle (writes proceed); stall 3/4; the halted CPU's read repeats on halt/dummy/align cycles (so `$2007` sees 2–3 extra reads); during OAM DMA the DMC costs 2 cycles. Not modelled: DMC fetch landing at the very start/end of OAM DMA (1/3-cycle cases).
+- 2026-11-17 [apu] Tests forced: length-counter halt write is deferred past a coincident half-frame clock; a length reload is ignored if the counter is nonzero on that clock; DMC timer starts at phase 426 (refill steals 4 cycles — `dmc_dma_during_read4` sync); power-on/reset applies one frame-counter tick (10–11 cycle delay). The "`$4015` read on the set cycle doesn't clear the frame IRQ" rule broke `6-irq_flag_timing` and was dropped.
+- 2026-11-17 [proofs] System theorems gained hypotheses with the APU: T-SYS-2 (`stepCycle_dma`, `dma_run`, `write4014`, `T_SYS_2_oam_dma`) assume `DmcIdle`; T-SYS-4 (`step_cpu`, `cpu_projection*`, `T_SYS_4_nmi`) assume `dmcBusy = false`; `T_SYS_4_apuIrq` now = `fc.irq || dmc.irqFlag`. Save-state format v2.
+- 2026-11-17 [roms] With the APU, `instr_misc` (incl. 04-dummy_reads_apu), `instr_timing`, `cpu_exec_space_apu`, `cpu_interrupts_v2` pass on the real System (not only the M2 scaffolding). `sprdma_and_dmc_dma` prints a 528/526 table with a CRC mismatch — expected table not found online.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -266,3 +271,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M4  CI green on 3f11587; definition of done holds; PR #5 marked ready
 - 2026-11-17  M5  started milestone (draft PR #6, base `m4-system`)
 - 2026-11-17  M5  APU components: FrameCounter+T-APU-1, channels+units (LFSR period proved), DMC+T-APU-3, Mixer+T-APU-2 (table error bounds), WAV; 237 theorems
+- 2026-11-17  M5  APU composed + wired (DMC DMA), --wav, blargg APU 29/32 (double_2007_read, sprdma ×2 known-fail); 136 fps; golden unchanged
