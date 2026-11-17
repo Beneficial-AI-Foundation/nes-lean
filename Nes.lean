@@ -32,3 +32,11 @@ import Nes.Cart.Mappers.NROM
 import Nes.Cart.Proofs.Ines
 import Nes.Cart.Proofs.Banks
 import Nes.Bus.Proofs.RomImmutable
+import Nes.Ppu.Background
+import Nes.Ppu.Sprites
+import Nes.Ppu.Render
+import Nes.Ppu.Timing
+import Nes.Ppu.Data
+import Nes.Ppu.Proofs.Data
+import Nes.Ppu.Proofs.Timing
+import Nes.Ppu.Proofs.Vblank
