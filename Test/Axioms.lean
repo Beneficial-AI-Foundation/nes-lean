@@ -105,7 +105,13 @@ def registry : List Name :=
   , `Nes.Cpu.Proofs.T_CPU_6_pha_pla
   , `Nes.Cpu.Proofs.T_CPU_6_php_plp
   , `Nes.Cpu.Proofs.T_CPU_6_jsr_rts
-  , `Nes.Cpu.Proofs.T_CPU_6_jsr_rts_direct ]
+  , `Nes.Cpu.Proofs.T_CPU_6_jsr_rts_direct
+  , `Nes.Cpu.Proofs.Refinement.prefix_spec
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_of_classes
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_read
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_imm
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_imp
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_write ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
