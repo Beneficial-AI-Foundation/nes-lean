@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M1
 - **Current branch:** `m1-cpu-isa`
-- **Next action:** M1 batch: `Cpu/Alu.lean` ∥ `Cpu/Proofs/Decode.lean` (T-CPU-3, T-CPU-4); then Alu proofs ∥ Isa.
+- **Next action:** M1 batch: `Cpu/Isa.lean` ∥ `Cpu/Proofs/Alu.lean` (T-CPU-1, T-CPU-2, T-REF-2).
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -21,8 +21,8 @@ when the milestone's definition of done holds.
 
 | M | Title | Plan phases | Branch | Base | PR | Status |
 |---|---|---|---|---|---|---|
-| M0 | Scaffold | 0 | `m0-scaffold` | `main` | #1 | ready for review |
-| M1 | nestest green | 1 | `m1-cpu-isa` | `m0-scaffold` | #2 | in progress |
+| M0 | Scaffold | 0 | `m0-scaffold` | `main` | #1 | merged |
+| M1 | nestest green | 1 | `m1-cpu-isa` | `main` | #2 | in progress |
 | M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | — | not started |
 | M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | — | not started |
 | M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | — | not started |
@@ -55,10 +55,10 @@ Parallel tracks: after items 1–2 land (they define the Lake layout), items 3�
 ### M1 — nestest green (Phase 1)
 Parallel tracks: {Types → Alu → Alu proofs} ∥ {Decode → Decode proofs} ∥ {Harte JSON loader, Nestest log formatter (against a stub `State`)}; then Isa (needs Alu + Decode) → Isa proofs ∥ Harte sweep ∥ nestest; T-CPU-8 ∥ benchmark.
 - [x] `Cpu/Types.lean`: registers, `Flags` structure ↔ `UInt8` packing with round-trip lemma, `State`
-- [ ] `Cpu/Alu.lean`: `spec` and `fast` versions of adc/sbc/cmp/asl/lsr/rol/ror/bit/inc/dec and the N/Z setters
+- [x] `Cpu/Alu.lean`: `spec` and `fast` versions of adc/sbc/cmp/asl/lsr/rol/ror/bit/inc/dec and the N/Z setters
 - [ ] `Cpu/Proofs/Alu.lean`: T-CPU-1, T-CPU-2, T-REF-2 (ALU) via `bv_decide`
 - [x] `Cpu/Decode.lean`: `Instr`, `AddrMode`, 256-entry table (official + unofficial + 12 JAM), base cycles, page-cross flag
-- [ ] `Cpu/Proofs/Decode.lean`: T-CPU-3 (totality, JAM set, `aaabbbcc` agreement on official), T-CPU-4 (cycle table)
+- [x] `Cpu/Proofs/Decode.lean`: T-CPU-3 (totality, JAM set, `aaabbbcc` agreement on official), T-CPU-4 (cycle table)
 - [ ] `Cpu/Isa.lean`: operand resolution per mode with page-cross detection; execution; `step : State → Mem → State × Mem × Nat`
 - [ ] `Cpu/Proofs/Isa.lean`: T-CPU-5 (zero-page wrap, page-cross condition, `JMP ($xxFF)` bug, PC wrap)
 - [ ] `Test/Harte.lean`: JSON loader for `nes6502` (flat 64 KiB memory), final-state diff; fast subset in `lake test` — _loader, diff and `runFast` landed against an abstract `StepFn`; remaining: adapt `Isa.step`, wire `runFast` into `Test/Main.lean`_
@@ -158,6 +158,8 @@ the docs, test-harness surprises.
 - 2026-11-17 [lean] v4.36 strings: `String.trim/take/drop` now go through `String.Slice`; `String.mk` deprecated → `String.ofList`; `if_true/if_false` deprecated → `ite_true/ite_false`. `Json.getNat?` does not range-check.
 - 2026-11-17 [tests] nestest copies code into RAM at `$0300` (log line 3349), so the trace's opcode bytes must be read from the model's memory — the nestest diff also checks writes.
 - 2026-11-17 [cpu] `State.p` stores the raw byte; PLP/RTI must decide bits 4/5 (6502: B ignored, U reads as 1) — settle against Harte in `Isa`.
+- 2026-11-17 [git] PR #1 was rebase-merged (new SHAs on `main`); restack with `git rebase --onto origin/main <old m0 tip> m1-cpu-isa`, not plain `git rebase main`.
+- 2026-11-17 [proofs] One-operand ALU equivalences (`∀ v : UInt8, fast.asl v = spec.asl v`) close by plain `decide` in ~0.4 s; `fast.adc = spec.adc` needs bridging lemmas (`UInt16.toNat_toUInt8`, `toNat_and`) or `bv_decide` on `toBitVec`.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -173,3 +175,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M0  CI green on 7835771; definition of done holds; PR #1 marked ready
 - 2026-11-17  M1  started milestone (draft PR #2, base `m0-scaffold`)
 - 2026-11-17  M1  4 agents: Types, Decode (cycles validated vs all Harte files), Harte loader, nestest harness; build/test green
+- 2026-11-17  M1  PR #1 merged → rebased M1 onto main; Alu (spec+fast) and T-CPU-3/T-CPU-4 proved; 8 theorems in registry
