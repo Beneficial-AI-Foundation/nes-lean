@@ -141,7 +141,9 @@ def registry : List Name :=
   , `Nes.Cpu.Proofs.T_CPU_7_hijack_mid
   , `Nes.Cpu.Proofs.T_CPU_7_hijack_late
   , `Nes.Cpu.Proofs.hj_quiet_run
-  , `Nes.Cpu.Proofs.T_CPU_7_irq_masked_opcode ]
+  , `Nes.Cpu.Proofs.T_CPU_7_irq_masked_opcode
+  , `Nes.Cpu.Proofs.T_CPU_7_nmi_taken
+  , `Nes.Cpu.Proofs.T_CPU_7_nmi_latency ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
