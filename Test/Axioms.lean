@@ -243,7 +243,13 @@ def registry : List Name :=
   , `Nes.System.Proofs.T_SYS_4_dots
   , `Nes.System.Proofs.T_SYS_4_cpu_projection
   , `Nes.System.Proofs.T_SYS_4_cpu_projection_mem
-  , `Nes.System.Proofs.T_SYS_4_nmi ]
+  , `Nes.System.Proofs.T_SYS_4_nmi
+  , `Nes.Apu.Proofs.T_APU_3_wrap
+  , `Nes.Apu.Proofs.T_APU_3_length
+  , `Nes.Apu.Proofs.T_APU_3_loop
+  , `Nes.Apu.Proofs.T_APU_3_irq
+  , `Nes.Apu.Proofs.T_APU_3_stall
+  , `Nes.Apu.Proofs.dmc_output_bounds ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

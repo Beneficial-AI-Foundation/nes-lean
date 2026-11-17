@@ -58,3 +58,5 @@ import Nes.System.SaveState
 import Nes.System.Proofs.SaveState
 import Nes.System.Proofs.Determinism
 import Nes.System.Proofs.Interrupts
+import Nes.Apu.Dmc
+import Nes.Apu.Proofs.Dmc
