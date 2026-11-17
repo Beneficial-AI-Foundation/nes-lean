@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M0
 - **Current branch:** `m0-scaffold`
-- **Next action:** M0 item 1 — `lake init`, toolchain pin, Lake targets.
+- **Next action:** M0 items 3–6 in parallel (Bits, Axioms, fetch-testdata, CI), then README, then PR ready.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -21,7 +21,7 @@ when the milestone's definition of done holds.
 
 | M | Title | Plan phases | Branch | Base | PR | Status |
 |---|---|---|---|---|---|---|
-| M0 | Scaffold | 0 | `m0-scaffold` | `main` | — | in progress |
+| M0 | Scaffold | 0 | `m0-scaffold` | `main` | #1 | in progress |
 | M1 | nestest green | 1 | `m1-cpu-isa` | `m0-scaffold` | — | not started |
 | M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | — | not started |
 | M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | — | not started |
@@ -43,8 +43,8 @@ a milestone is otherwise a suggestion. "PR ready" is always last.
 
 ### M0 — Scaffold
 Parallel tracks: after items 1–2 land (they define the Lake layout), items 3–7 are all independent.
-- [ ] `lake init` layout: `lakefile.toml` with lib `Nes` (`precompileModules = true`), exe `nes` (`Main.lean`) built with `moreLeancArgs = ["-O3", "-DNDEBUG"]`, test driver `Test`; `lean-toolchain` = latest stable (v4.36.0; fall back to installed v4.35.0 if the download fails)
-- [ ] Batteries dependency pinned to the tag matching the toolchain; `lake update`; `lake build` green
+- [x] `lake init` layout: `lakefile.toml` with lib `Nes` (`precompileModules = true`), exe `nes` (`Main.lean`) built with `moreLeancArgs = ["-O3", "-DNDEBUG"]`, test driver `Test`; `lean-toolchain` = latest stable (v4.36.0; fall back to installed v4.35.0 if the download fails)
+- [x] Batteries dependency pinned to the tag matching the toolchain; `lake update`; `lake build` green
 - [ ] `Nes/Prelude/Bits.lean`: first `UInt8`/`UInt16` ↔ `BitVec`/`Nat` bridging lemmas, one `bv_decide` and one `omega` smoke proof
 - [ ] `Test/Axioms.lean`: theorem-name registry + `#print axioms` check that fails on `sorryAx` / `Lean.ofReduceBool`; wired into `lake test`
 - [ ] `scripts/fetch-testdata.sh`: SingleStepTests `nes6502`, `nestest.nes` + `nestest.log`, blargg suites; pinned commits; `testdata/` gitignored
@@ -145,6 +145,7 @@ attempt: Lean API names, tactic behaviour, Lake quirks, hardware facts that cont
 the docs, test-harness surprises.
 
 - 2026-11-17 [lean] `v4.35.0` is installed locally; `elan` resolves `stable` to `v4.36.0` and will download it on first use.
+- 2026-11-17 [lean] v4.36.0 downloaded fine via `elan toolchain install`; Batteries has a matching `v4.36.0` tag. Lake `testDriver = "Test"` points at the `Test` lean_exe (root `Test.Main`).
 - 2026-11-17 [tests] The `nes6502` SingleStepTests assume a flat 64 KiB RAM with no NES bus; feed the CPU models a plain memory in the Harte harness.
 
 ## Decisions log
@@ -154,3 +155,4 @@ the docs, test-harness surprises.
 
 ## Tick log (keep the last 20 lines only)
 _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
+- 2026-11-17  M0  started milestone (draft PR #1); Lake layout on v4.36.0 + Batteries v4.36.0, build/test/exe green
