@@ -24,7 +24,7 @@ when the milestone's definition of done holds.
 | M0 | Scaffold | 0 | `m0-scaffold` | `main` | #1 | merged |
 | M1 | nestest green | 1 | `m1-cpu-isa` | `main` | #2 | ready for review |
 | M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | #3 | ready for review |
-| M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | #4 | in progress |
+| M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | #4 | ready for review |
 | M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | — | not started |
 | M5 | Sounds right | 6 | `m5-apu` | `m4-system` | — | not started |
 | M6 | The PPU theorem | 8 | `m6-ppu-theorem` | `m5-apu` | — | not started |
@@ -97,7 +97,7 @@ Parallel tracks: {Bus + proofs} ∥ {Cart/Ines + NROM + proofs} ∥ {Controller}
 - [x] `$2007` read buffer + T-PPU-7; NMI line + T-PPU-5
 - [x] Minimal `System` clocking sufficient to run blargg `ppu_vbl_nmi`, `sprite_hit_tests`, `sprite_overflow_tests`, `ppu_read_buffer` → green — 27/27 (CNROM pulled forward for `ppu_read_buffer`)
 - [x] CLI: run N frames → PNG/PPM; first homebrew title screen; commit its frame hash as golden (never the ROM)
-- [ ] PR M3 ready. Create `m4-system`.
+- [x] PR M3 ready. Create `m4-system`.
 
 ### M4 — Playable (Phases 5, 7, 9)
 Parallel tracks: {System stepCycle/Frame + T-SYS-1/3} ∥ {DMA + T-SYS-2} ∥ {SaveState/input + T-REF-3/4} ∥ {MMC1, UxROM, CNROM, AxROM — one agent per mapper} ∥ {MMC3 + A12 IRQ}; then golden hashes ∥ perf pass.
@@ -244,3 +244,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M3  PPU Timing+T-PPU-1/5, Background (0 mismatches), Sprites+Render (4842 checks), $2007+T-PPU-7; 165 theorems
 - 2026-11-17  M3  Frontend palette/PNG/PPM/hash; Ppu.Step + minimal System; blargg PPU 26/27; renderLatch at (261,338) from even_odd_timing
 - 2026-11-17  M3  CNROM → blargg PPU 27/27; `nes run` CLI; spritecans golden hashes (frame viewed); ~70 fps; all M3 work items ticked
+- 2026-11-17  M3  CI green on 4d9fe94; definition of done holds; PR #4 marked ready
