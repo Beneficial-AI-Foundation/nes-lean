@@ -1,6 +1,10 @@
 import Nes.Cart.Ines
 import Nes.Cart.Mappers.NROM
 import Nes.Cart.Mappers.CNROM
+import Nes.Cart.Mappers.MMC1
+import Nes.Cart.Mappers.UxROM
+import Nes.Cart.Mappers.AxROM
+import Nes.Cart.Mappers.MMC3
 
 /-!
 # `Nes.Cart.Mapper` — the mapper interface and the cartridge
@@ -17,6 +21,11 @@ and keeps the per-mapper state boxed behind an existential. Instead:
   together with the generic board RAM (8 KiB PRG-RAM, 8 KiB CHR-RAM). The `Cart.*`
   operations are `@[inline]` `match`-dispatchers, so a call compiles to a tag switch plus a
   direct (inlinable) call.
+* Supported: NROM (0), MMC1 (1), UxROM (2), CNROM (3), AxROM (7).
+* **Timed register writes.** `regWriteAt` is `regWrite` plus the CPU cycle number of the
+  write (`0` = unknown), for mappers whose register logic depends on timing (MMC1 ignores
+  serial writes on consecutive cycles). It defaults to `regWrite`. `CartState.cpuWrite` /
+  `Cart.cpuWrite` take the cycle as an optional last argument `cyc` (default `0`).
 * **Extension point (M4):** a new mapper adds a module under `Nes/Cart/Mappers/`, a
   `Mapper` instance below, a `MapperState` constructor, one arm in each
   `MapperState.*` dispatcher, and a case in `MapperState.ofHeader`.
@@ -29,7 +38,7 @@ returns only a `CartState` (or a byte). Bank arithmetic returns `Fin rom.prg.siz
 
 * `CartState.cpuRead rom st a ob` — `$8000–$FFFF`: PRG-ROM at the mapper's offset;
   `$6000–$7FFF`: PRG-RAM (if the mapper enables reads); otherwise the open-bus value `ob`.
-* `CartState.cpuWrite rom st a v` — `$6000–$7FFF`: PRG-RAM (if writable); every write to
+* `CartState.cpuWrite rom st a v (cyc := 0)` — `$6000–$7FFF`: PRG-RAM (if writable); every write to
   `$4020–$FFFF` is also passed to the mapper's register logic.
 * `CartState.ppuRead rom st a` — `$0000–$1FFF`: CHR-ROM, or CHR-RAM if the image has none,
   at the mapper's offset.
@@ -52,6 +61,8 @@ class Mapper (σ : Type) where
   prgRamWritable : σ → Bool
   /-- Effect of a CPU write to `$4020–$FFFF` on the mapper registers. -/
   regWrite : Rom → σ → UInt16 → UInt8 → σ
+  /-- `regWrite` on CPU cycle `cyc` (`0`: unknown); defaults to ignoring the cycle. -/
+  regWriteAt : Rom → σ → UInt16 → UInt8 → UInt64 → σ := fun rom s a v _ => regWrite rom s a v
   /-- The PPU drives address line A12 to this level. -/
   ppuA12 : Bool → σ → σ
   /-- The mapper's IRQ output. -/
@@ -79,10 +90,55 @@ instance : Mapper Cnrom.State where
   irq := Cnrom.irq
   mirroring := Cnrom.mirroring
 
+instance : Mapper Mmc1.State where
+  prgOffset := Mmc1.prgOffset
+  chrOffset := Mmc1.chrOffset
+  prgRamReadable := Mmc1.prgRamEnabled
+  prgRamWritable := Mmc1.prgRamEnabled
+  regWrite := Mmc1.regWrite
+  regWriteAt := Mmc1.regWriteAt
+  ppuA12 := Mmc1.ppuA12
+  irq := Mmc1.irq
+  mirroring := Mmc1.mirroring
+
+instance : Mapper Uxrom.State where
+  prgOffset := Uxrom.prgOffset
+  chrOffset := Uxrom.chrOffset
+  prgRamReadable _ := true
+  prgRamWritable _ := true
+  regWrite := Uxrom.regWrite
+  ppuA12 := Uxrom.ppuA12
+  irq := Uxrom.irq
+  mirroring := Uxrom.mirroring
+
+instance : Mapper Axrom.State where
+  prgOffset := Axrom.prgOffset
+  chrOffset := Axrom.chrOffset
+  prgRamReadable _ := true
+  prgRamWritable _ := true
+  regWrite := Axrom.regWrite
+  ppuA12 := Axrom.ppuA12
+  irq := Axrom.irq
+  mirroring := Axrom.mirroring
+
+instance : Mapper Mmc3.State where
+  prgOffset := Mmc3.prgOffset
+  chrOffset := Mmc3.chrOffset
+  prgRamReadable := Mmc3.prgRamReadable
+  prgRamWritable := Mmc3.prgRamWritable
+  regWrite := Mmc3.regWrite
+  ppuA12 := Mmc3.ppuA12
+  irq := Mmc3.irq
+  mirroring := Mmc3.mirroring
+
 /-- Register state of the cartridge's mapper; one constructor per supported mapper. -/
 inductive MapperState where
   | nrom (s : Nrom.State)
   | cnrom (s : Cnrom.State)
+  | mmc1 (s : Mmc1.State)
+  | uxrom (s : Uxrom.State)
+  | axrom (s : Axrom.State)
+  | mmc3 (s : Mmc3.State)
   deriving DecidableEq, Repr, Inhabited
 
 namespace MapperState
@@ -90,40 +146,79 @@ namespace MapperState
 @[inline] def prgOffset (rom : Rom) : MapperState → UInt16 → Fin rom.prg.size
   | .nrom s, a => Mapper.prgOffset rom s a
   | .cnrom s, a => Mapper.prgOffset rom s a
+  | .mmc1 s, a => Mapper.prgOffset rom s a
+  | .uxrom s, a => Mapper.prgOffset rom s a
+  | .axrom s, a => Mapper.prgOffset rom s a
+  | .mmc3 s, a => Mapper.prgOffset rom s a
 
 @[inline] def chrOffset (rom : Rom) : MapperState → UInt16 → Fin rom.chrLen
   | .nrom s, a => Mapper.chrOffset rom s a
   | .cnrom s, a => Mapper.chrOffset rom s a
+  | .mmc1 s, a => Mapper.chrOffset rom s a
+  | .uxrom s, a => Mapper.chrOffset rom s a
+  | .axrom s, a => Mapper.chrOffset rom s a
+  | .mmc3 s, a => Mapper.chrOffset rom s a
 
 @[inline] def prgRamReadable : MapperState → Bool
   | .nrom s => Mapper.prgRamReadable s
   | .cnrom s => Mapper.prgRamReadable s
+  | .mmc1 s => Mapper.prgRamReadable s
+  | .uxrom s => Mapper.prgRamReadable s
+  | .axrom s => Mapper.prgRamReadable s
+  | .mmc3 s => Mapper.prgRamReadable s
 
 @[inline] def prgRamWritable : MapperState → Bool
   | .nrom s => Mapper.prgRamWritable s
   | .cnrom s => Mapper.prgRamWritable s
+  | .mmc1 s => Mapper.prgRamWritable s
+  | .uxrom s => Mapper.prgRamWritable s
+  | .axrom s => Mapper.prgRamWritable s
+  | .mmc3 s => Mapper.prgRamWritable s
 
-@[inline] def regWrite (rom : Rom) : MapperState → UInt16 → UInt8 → MapperState
-  | .nrom s, a, v => .nrom (Mapper.regWrite rom s a v)
-  | .cnrom s, a, v => .cnrom (Mapper.regWrite rom s a v)
+/-- Register write on CPU cycle `cyc` (`0`: unknown). -/
+@[inline] def regWrite (rom : Rom) (m : MapperState) (a : UInt16) (v : UInt8)
+    (cyc : UInt64 := 0) : MapperState :=
+  match m with
+  | .nrom s => .nrom (Mapper.regWriteAt rom s a v cyc)
+  | .cnrom s => .cnrom (Mapper.regWriteAt rom s a v cyc)
+  | .mmc1 s => .mmc1 (Mapper.regWriteAt rom s a v cyc)
+  | .uxrom s => .uxrom (Mapper.regWriteAt rom s a v cyc)
+  | .axrom s => .axrom (Mapper.regWriteAt rom s a v cyc)
+  | .mmc3 s => .mmc3 (Mapper.regWriteAt rom s a v cyc)
 
 @[inline] def ppuA12 (b : Bool) : MapperState → MapperState
   | .nrom s => .nrom (Mapper.ppuA12 b s)
   | .cnrom s => .cnrom (Mapper.ppuA12 b s)
+  | .mmc1 s => .mmc1 (Mapper.ppuA12 b s)
+  | .uxrom s => .uxrom (Mapper.ppuA12 b s)
+  | .axrom s => .axrom (Mapper.ppuA12 b s)
+  | .mmc3 s => .mmc3 (Mapper.ppuA12 b s)
 
 @[inline] def irq : MapperState → Bool
   | .nrom s => Mapper.irq s
   | .cnrom s => Mapper.irq s
+  | .mmc1 s => Mapper.irq s
+  | .uxrom s => Mapper.irq s
+  | .axrom s => Mapper.irq s
+  | .mmc3 s => Mapper.irq s
 
 @[inline] def mirroring (rom : Rom) : MapperState → Mirroring
   | .nrom s => Mapper.mirroring rom s
   | .cnrom s => Mapper.mirroring rom s
+  | .mmc1 s => Mapper.mirroring rom s
+  | .uxrom s => Mapper.mirroring rom s
+  | .axrom s => Mapper.mirroring rom s
+  | .mmc3 s => Mapper.mirroring rom s
 
 /-- Power-on mapper state for the mapper number in the header. -/
 def ofHeader (h : Header) : Except String MapperState :=
   match h.mapper with
   | 0 => .ok (.nrom {})
+  | 1 => .ok (.mmc1 {})
+  | 2 => .ok (.uxrom {})
   | 3 => .ok (.cnrom {})
+  | 7 => .ok (.axrom {})
+  | 4 => .ok (.mmc3 (Mmc3.init h))
   | n => .error s!"unsupported mapper {n}"
 
 end MapperState
@@ -161,15 +256,16 @@ def init (m : MapperState) : CartState :=
     if st.mapper.prgRamReadable then st.prgRam[st.prgRamIdx a] else ob
   else ob
 
-/-- CPU write to `$4020–$FFFF`. -/
-@[inline] def cpuWrite (rom : Rom) (st : CartState) (a : UInt16) (v : UInt8) : CartState :=
+/-- CPU write to `$4020–$FFFF` on CPU cycle `cyc` (`0`: unknown; see `Mapper.regWriteAt`). -/
+@[inline] def cpuWrite (rom : Rom) (st : CartState) (a : UInt16) (v : UInt8)
+    (cyc : UInt64 := 0) : CartState :=
   let st :=
     if 0x6000 ≤ a && a < 0x8000 && st.mapper.prgRamWritable then
       { st with
         prgRam := st.prgRam.set (st.prgRamIdx a) v
         prgRam_size := by rw [ByteArray.size_set']; exact st.prgRam_size }
     else st
-  { st with mapper := st.mapper.regWrite rom a v }
+  { st with mapper := st.mapper.regWrite rom a v cyc }
 
 /-- PPU read of the pattern-table space `$0000–$1FFF`. -/
 @[inline] def ppuRead (rom : Rom) (st : CartState) (a : UInt16) : UInt8 :=
@@ -209,8 +305,8 @@ structure Cart where
 namespace Cart
 
 @[inline] def cpuRead (c : Cart) (a : UInt16) (ob : UInt8) : UInt8 := c.st.cpuRead c.rom a ob
-@[inline] def cpuWrite (c : Cart) (a : UInt16) (v : UInt8) : Cart :=
-  { c with st := c.st.cpuWrite c.rom a v }
+@[inline] def cpuWrite (c : Cart) (a : UInt16) (v : UInt8) (cyc : UInt64 := 0) : Cart :=
+  { c with st := c.st.cpuWrite c.rom a v cyc }
 @[inline] def ppuRead (c : Cart) (a : UInt16) : UInt8 := c.st.ppuRead c.rom a
 @[inline] def ppuWrite (c : Cart) (a : UInt16) (v : UInt8) : Cart :=
   { c with st := c.st.ppuWrite c.rom a v }

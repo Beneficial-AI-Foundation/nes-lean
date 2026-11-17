@@ -204,7 +204,25 @@ def registry : List Name :=
   , `Nes.Cart.Cnrom.chrOffset_lt
   , `Nes.Cart.Cnrom.regWrite_bank_le
   , `Nes.Cart.Cnrom.regWrite_bank_lt
-  , `Nes.Cart.Cnrom.chrOffset_banked ]
+  , `Nes.Cart.Cnrom.chrOffset_banked
+  , `Nes.Cart.Mmc1.T_CART_3_commit_serial
+  , `Nes.Cart.Mmc1.T_CART_3_commit
+  , `Nes.Cart.Mmc1.T_CART_3_reset_serial
+  , `Nes.Cart.Mmc1.T_CART_3_reset
+  , `Nes.Cart.Mmc3.T_CART_4_fires
+  , `Nes.Cart.Mmc3.T_CART_4_reload
+  , `Nes.Cart.Mmc3.T_CART_4_decrement
+  , `Nes.Cart.Mmc3.T_CART_4_filter
+  , `Nes.Cart.Mmc3.T_CART_4_high
+  , `Nes.Cart.Mmc3.T_CART_4_low
+  , `Nes.Cart.Mmc3.T_CART_4_disable
+  , `Nes.Cart.Mmc3.T_CART_4_disabled_no_irq
+  , `Nes.Cart.Mmc3.T_CART_4_c001
+  , `Nes.Cart.Mmc3.prgOffset_lt
+  , `Nes.Cart.Mmc3.chrOffset_lt
+  , `Nes.Cart.Cart.run_kind
+  , `Nes.Cart.Cart.run_cpuRead_prg
+  , `Nes.Cart.Cart.run_ppuRead_chr ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
