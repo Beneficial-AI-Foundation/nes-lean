@@ -111,7 +111,20 @@ def registry : List Name :=
   , `Nes.Cpu.Proofs.Refinement.T_REF_1_read
   , `Nes.Cpu.Proofs.Refinement.T_REF_1_imm
   , `Nes.Cpu.Proofs.Refinement.T_REF_1_imp
-  , `Nes.Cpu.Proofs.Refinement.T_REF_1_write ]
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_write
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1
+  , `Nes.Cpu.Proofs.Refinement.all_classes_refine
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_rmw
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_branch
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_jsr
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_rts
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_rti
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_brk
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_jmpAbs
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_jmpInd
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_push
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_pull
+  , `Nes.Cpu.Proofs.Refinement.T_REF_1_jam ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
