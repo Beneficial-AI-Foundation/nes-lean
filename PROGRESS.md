@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M6
 - **Current branch:** `m6-ppu-theorem`
-- **Next action:** M6 batch: `Ppu/Declarative.lean` reference renderer ∥ T-PPU-3 (sprite evaluation spec) ∥ T-PPU-4 (sprite-0 hit); then shifter invariant → background half → sprite half of T-PPU-6 (headline, cannot be deferred).
+- **Next action:** M6: background half of T-PPU-6 (compose `prefetch` + `bg_scanline_ppuDot` over 240 lines with the vertical scroll increments, against `Declarative.bgPixel`) ∥ sprite-side groundwork: frame lemmas that `bgDot`/`pixel` leave the sprite-eval fields alone so `T_PPU_3_eval` applies to `Ppu.dot`, and sprite fetch 257–320 = the slots `Declarative.spritePixel` reads.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -121,11 +121,11 @@ Parallel tracks: {FrameCounter + T-APU-1 + DMC DMA wiring} ∥ {pulse/triangle/n
 
 ### M6 — The PPU theorem (Phase 8)
 Parallel tracks: {Declarative renderer → shifter invariant → background half} ∥ {T-PPU-3} ∥ {T-PPU-4}; then sprite half + mux (needs all three).
-- [ ] `Ppu/Declarative.lean` reference renderer
-- [ ] Shifter invariant lemma (shifter contents = pattern bits of tile at `v` + 2)
+- [x] `Ppu/Declarative.lean` reference renderer (55 static frames match the pipeline byte-for-byte; in `lake test`)
+- [x] Shifter invariant lemma (shifter contents = pattern bits of tile at `v` + 2) — incl. `bg_scanline_ppuDot` (one scanline of `bgPixelRaw` over the real `Ppu.dot`) and `prefetch`
 - [ ] Background half of T-PPU-6
-- [ ] T-PPU-3 sprite evaluation spec
-- [ ] T-PPU-4 sprite-0 hit
+- [x] T-PPU-3 sprite evaluation spec (over `evalLine`; the link to per-dot `Ppu.dot` is part of the sprite half below)
+- [x] T-PPU-4 sprite-0 hit
 - [ ] Sprite half + priority mux of T-PPU-6; `#print axioms` clean
 - [ ] PR M6 ready. Create `m7-hoare`.
 
@@ -225,6 +225,9 @@ the docs, test-harness surprises.
 - 2026-11-17 [proofs] System theorems gained hypotheses with the APU: T-SYS-2 (`stepCycle_dma`, `dma_run`, `write4014`, `T_SYS_2_oam_dma`) assume `DmcIdle`; T-SYS-4 (`step_cpu`, `cpu_projection*`, `T_SYS_4_nmi`) assume `dmcBusy = false`; `T_SYS_4_apuIrq` now = `fc.irq || dmc.irqFlag`. Save-state format v2.
 - 2026-11-17 [roms] With the APU, `instr_misc` (incl. 04-dummy_reads_apu), `instr_timing`, `cpu_exec_space_apu`, `cpu_interrupts_v2` pass on the real System (not only the M2 scaffolding). `sprdma_and_dmc_dma` prints a 528/526 table with a CRC mismatch — expected table not found online.
 - 2026-11-17 [ppu] **Hardware:** a `$2007` read's buffer refill lands slightly more than one CPU cycle later while `v` increments immediately, so a read on the very next CPU cycle (e.g. the dummy read of a page-crossing `lda $20F7,x`) returns the buffer from *before* the previous refill and refills from the already-incremented `v` (blargg `double_2007_read.s` comments). Modelled with `prevBuffer` + `lastRead2007` (CPU cycle); save-state v3.
+- 2026-11-17 [ppu] Declarative renderer: static frame from a snapshot in vblank (lines 241–260); vertical scroll `Y0 = 8·coarseY + fineY`: if `Y0 < 240` row `(Y0+y) % 240` with nametable flip on wrap, if `Y0 ≥ 240` (coarse Y 30/31) row `(Y0+y) % 256` with no flip; horizontal `(X0+x) % 256` with flip past 256. Sprites on line y come from `evalSpec oam (y−1) h`; none on line 0. Needs `oamAddr = 0` at evaluation and `rd`/`palRd` constant (no CHR bank switches).
+- 2026-11-17 [proofs] Shifter invariant: `Holds s A B j` (shifters = `(A‖B) <<< j`), `PInv` per dot with `v = incX (incX u)` (+1 incX after phase 7 except dot 256); `Start` at dot 0, scanline theorem counts dots 1..n; odd-frame skip jumps 339 → 0 — pass idle dots with `Ready.idle`. T-PPU-3 via an abstract Nat machine `Ev` + `Rel`, invariant `Inv1 ∨ Inv2`, measure `(64−n)+(32−sec)` = 96 = latch/act pairs on dots 65–256.
+- 2026-11-17 [lean] `ite_eq_left_of_eq_true _ _ (eq_true h)` / `ite_eq_right_of_eq_false` replace deprecated `if_pos`/`if_neg`; `split` can't see through `have`/`let` in `fetchDot`/`evalDot` — `simp only [def]` then `repeat' split`; `decide` over `∀ d < 300` hits the recursion limit — go through `toNat` + `omega`.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -276,3 +279,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M5  double_2007_read fixed (back-to-back $2007 refill delay); blargg APU 30/30; 240 theorems; all M5 items ticked
 - 2026-11-17  M5  CI green on e963a28; definition of done holds; PR #6 marked ready
 - 2026-11-17  M6  started milestone (draft PR #7, base `m5-apu`)
+- 2026-11-17  M6  Declarative renderer (55 frames byte-exact), shifter invariant + bg scanline, T-PPU-3, T-PPU-4; 253 theorems
