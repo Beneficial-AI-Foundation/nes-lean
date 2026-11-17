@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M4
 - **Current branch:** `m4-system`
-- **Next action:** M4 batch: System stepCycle/Frame + T-SYS-1/3 ∥ DMA + T-SYS-2 ∥ mappers MMC1/UxROM/AxROM ∥ MMC3 + A12 IRQ (check file overlap on `System/Nes.lean` and `Cart/Mapper.lean` first).
+- **Next action:** M4 batch: MMC3 test ROMs ∥ SaveState + T-REF-3 + input script/T-REF-4 + T-SYS-4 ∥ golden hashes (3+ homebrew ROMs across mappers); then perf pass.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -101,11 +101,11 @@ Parallel tracks: {Bus + proofs} ∥ {Cart/Ines + NROM + proofs} ∥ {Controller}
 
 ### M4 — Playable (Phases 5, 7, 9)
 Parallel tracks: {System stepCycle/Frame + T-SYS-1/3} ∥ {DMA + T-SYS-2} ∥ {SaveState/input + T-REF-3/4} ∥ {MMC1, UxROM, CNROM, AxROM — one agent per mapper} ∥ {MMC3 + A12 IRQ}; then golden hashes ∥ perf pass.
-- [ ] `System/Nes.lean` `stepCycle`, `runDots`, `runFrame`; interrupt wiring; T-SYS-1, T-SYS-3
-- [ ] `Bus/Dma.lean` OAM DMA (513/514) ; T-SYS-2
+- [x] `System/Nes.lean` `stepCycle`, `runDots`, `runFrame`; interrupt wiring; T-SYS-1, T-SYS-3
+- [x] `Bus/Dma.lean` OAM DMA (513/514) ; T-SYS-2 (whole-system form for pages in work RAM; cart/IO pages need Cart read lemmas)
 - [ ] `System/SaveState.lean` + T-REF-3; input script + T-REF-4; T-SYS-4
-- [ ] Mappers: MMC1 (+T-CART-3), UxROM, CNROM (done in M3), AxROM (+T-CART-2 each)
-- [ ] MMC3 with A12 IRQ (+T-CART-2, T-CART-4); MMC3 IRQ test ROMs green
+- [x] Mappers: MMC1 (+T-CART-3), UxROM, CNROM (done in M3), AxROM (+T-CART-2 each)
+- [ ] MMC3 with A12 IRQ (+T-CART-2, T-CART-4); MMC3 IRQ test ROMs green — _mapper, A12 filter, IRQ, T-CART-2/4 landed and wired; remaining: run `mmc3_test_2`/`mmc3_irq_tests` (expect `6-MMC3_alt` to fail: old/NEC variant not modelled)_
 - [ ] Golden frame hashes for 3+ homebrew ROMs across mappers
 - [ ] Performance pass on the native binary: profile `stepCycle`, read its generated C, remove boxing/allocation/closures per PLAN.md §4 "Performance"; target ≥ real time (60 fps) on a homebrew ROM; record numbers (3-tick budget, then move on)
 - [ ] PR M4 ready. Create `m5-apu`.
@@ -205,6 +205,10 @@ the docs, test-harness surprises.
 - 2026-11-17 [rules] `get!`/`[i]!` are panicking accessors — treat them as `panic!` under `Nes/`; use total reads (`if h : i < a.size then a[i] else 0`, `getD`).
 - 2026-11-17 [tests] Golden hashes (FNV-1a 64 over frame palette indices, power-on, no input): spritecans @60 `07e982a570087379`, @120 `6e207aa1ad58d617`, @600 `77a4e4e325a92630`; frame 120 viewed: title text + credits + one can sprite. Frame 1 is the partial frame up to the first vblank.
 - 2026-11-17 [lean] `lake env lean --run` cannot load the precompiled `Nes` dylibs out of dependency order (dlopen "symbol not found") and falls back to the slow interpreter — use the compiled `Test`/`nes` exes for anything long.
+- 2026-11-17 [system] Clock stored as unboxed fields `clkCpu clkPpu clkApu clkOdd` with a `Nes.clock` view — a nested `Clock` structure, separate cycle+tick updates and a non-constant `lines.reset` each cost ~4–7%. RESET is a `resetLine` field latched into `resetPending` per cycle. `runFrame` now stops at the start of a frame (frame counter change), not at vblank; `frameFuel = 29781`.
+- 2026-11-17 [system] OAM DMA deviations (documented): the halt cycle does no dummy read; the halt is not delayed to a read cycle. `sprdma_and_dmc_dma` needs the APU (M5).
+- 2026-11-17 [cart] MMC1 drops serial writes on the CPU cycle right after the previous one (`regWriteAt … cyc`, `cyc = 0` = unknown); the system passes `clkCpu`. MMC3: A12 rising edge clocks the counter after ≥ 10 low PPU dots; new/Sharp IRQ behaviour (latch 0 fires every clock); PPU A12 toggles from `$2007` accesses not modelled. UxROM bus conflicts AND-type except NES 2.0 submapper 1; AxROM only submapper 2.
+- 2026-11-17 [roms] On the real System: instr_test-v5 `official_only` 16/16, instr_test-v3 15/15; MMC1/UxROM/AxROM homebrew boots render (mmc1_a12, scroll, pulsar, deadline, midscanline, 240pee, oam3, …); `blargg_litewall-10c` blank (timing/APU?).
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -246,3 +250,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M3  CNROM → blargg PPU 27/27; `nes run` CLI; spritecans golden hashes (frame viewed); ~70 fps; all M3 work items ticked
 - 2026-11-17  M3  CI green on 4d9fe94; definition of done holds; PR #4 marked ready
 - 2026-11-17  M4  started milestone (draft PR #5, base `m3-ppu`)
+- 2026-11-17  M4  mappers MMC1/UxROM/AxROM/MMC3 (T-CART-2/3/4, T-BUS-2); System clock + DMA (T-SYS-1/2/3); blargg PPU 29/29; 194 theorems
