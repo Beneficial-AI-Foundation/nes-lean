@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M4
 - **Current branch:** `m4-system`
-- **Next action:** M4 batch: MMC3 test ROMs ∥ SaveState + T-REF-3 + input script/T-REF-4 + T-SYS-4 ∥ golden hashes (3+ homebrew ROMs across mappers); then perf pass.
+- **Next action:** M4 performance pass (3-tick budget): profile `stepCycle`, read the generated C, remove boxing/allocation/closures; target ≥ 60 fps (real time) on a homebrew ROM — currently ~65–70 fps; record numbers. Then PR M4 ready.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -103,10 +103,10 @@ Parallel tracks: {Bus + proofs} ∥ {Cart/Ines + NROM + proofs} ∥ {Controller}
 Parallel tracks: {System stepCycle/Frame + T-SYS-1/3} ∥ {DMA + T-SYS-2} ∥ {SaveState/input + T-REF-3/4} ∥ {MMC1, UxROM, CNROM, AxROM — one agent per mapper} ∥ {MMC3 + A12 IRQ}; then golden hashes ∥ perf pass.
 - [x] `System/Nes.lean` `stepCycle`, `runDots`, `runFrame`; interrupt wiring; T-SYS-1, T-SYS-3
 - [x] `Bus/Dma.lean` OAM DMA (513/514) ; T-SYS-2 (whole-system form for pages in work RAM; cart/IO pages need Cart read lemmas)
-- [ ] `System/SaveState.lean` + T-REF-3; input script + T-REF-4; T-SYS-4
+- [x] `System/SaveState.lean` + T-REF-3; input script + T-REF-4; T-SYS-4
 - [x] Mappers: MMC1 (+T-CART-3), UxROM, CNROM (done in M3), AxROM (+T-CART-2 each)
-- [ ] MMC3 with A12 IRQ (+T-CART-2, T-CART-4); MMC3 IRQ test ROMs green — _mapper, A12 filter, IRQ, T-CART-2/4 landed and wired; remaining: run `mmc3_test_2`/`mmc3_irq_tests` (expect `6-MMC3_alt` to fail: old/NEC variant not modelled)_
-- [ ] Golden frame hashes for 3+ homebrew ROMs across mappers
+- [x] MMC3 with A12 IRQ (+T-CART-2, T-CART-4); MMC3 IRQ test ROMs green — 15/15 Sharp-MMC3 ROMs; MMC3A/MMC6 ROMs known-fail (old IRQ behaviour not modelled)
+- [x] Golden frame hashes for 3+ homebrew ROMs across mappers (8 new: MMC1 ×2, UxROM ×2, AxROM, CNROM ×2, MMC3)
 - [ ] Performance pass on the native binary: profile `stepCycle`, read its generated C, remove boxing/allocation/closures per PLAN.md §4 "Performance"; target ≥ real time (60 fps) on a homebrew ROM; record numbers (3-tick budget, then move on)
 - [ ] PR M4 ready. Create `m5-apu`.
 
@@ -209,6 +209,10 @@ the docs, test-harness surprises.
 - 2026-11-17 [system] OAM DMA deviations (documented): the halt cycle does no dummy read; the halt is not delayed to a read cycle. `sprdma_and_dmc_dma` needs the APU (M5).
 - 2026-11-17 [cart] MMC1 drops serial writes on the CPU cycle right after the previous one (`regWriteAt … cyc`, `cyc = 0` = unknown); the system passes `clkCpu`. MMC3: A12 rising edge clocks the counter after ≥ 10 low PPU dots; new/Sharp IRQ behaviour (latch 0 fires every clock); PPU A12 toggles from `$2007` accesses not modelled. UxROM bus conflicts AND-type except NES 2.0 submapper 1; AxROM only submapper 2.
 - 2026-11-17 [roms] On the real System: instr_test-v5 `official_only` 16/16, instr_test-v3 15/15; MMC1/UxROM/AxROM homebrew boots render (mmc1_a12, scroll, pulsar, deadline, midscanline, 240pee, oam3, …); `blargg_litewall-10c` blank (timing/APU?).
+- 2026-11-17 [system] Save-state format: magic `NESS` + version byte, then every mutable field in declaration order (LE ints, Bool 0/1, tag+payload enums, LEB128-prefixed ByteArrays); the ROM is not saved (`deserialize rom bytes`). ~82 KB per state. Adding a field to any saved structure breaks the build at its `Codec` tuple — add it there and bump `SaveState.version`.
+- 2026-11-17 [proofs] T-SYS-4's NMI theorem assumes the CPU's reads in the window agree with a flat 64 KiB image (T-CPU-7 is stated over flat `Mem`) and that the NMI/IRQ lines are held; the general system→core projection (`T_SYS_4_cpu_projection`) has no such assumption.
+- 2026-11-17 [roms] MMC3: A12 follows `v` when rendering is off, so `$2006`/`$2007` accesses clock the counter (A12_clocking tests pass); counter clocks on the first sprite fetch (dot 261); `$C001` clears the counter without setting IRQ. `other/high-hopes.nes` (MMC3) renders black at 240/600 — unexplained, investigate later; `240pee-bnrom.nes` is mapper 34 (unsupported).
+- 2026-11-17 [lean] `Nat.strong_induction_on` doesn't exist in this core — use `Nat.strongRecOn`.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -251,3 +255,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M3  CI green on 4d9fe94; definition of done holds; PR #4 marked ready
 - 2026-11-17  M4  started milestone (draft PR #5, base `m3-ppu`)
 - 2026-11-17  M4  mappers MMC1/UxROM/AxROM/MMC3 (T-CART-2/3/4, T-BUS-2); System clock + DMA (T-SYS-1/2/3); blargg PPU 29/29; 194 theorems
+- 2026-11-17  M4  MMC3 ROMs 15/15; save states + T-REF-3/4; T-SYS-4; 8 new golden hashes (11 total); 209 theorems; only perf pass + PR ready left
