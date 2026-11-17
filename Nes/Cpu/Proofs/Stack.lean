@@ -135,10 +135,16 @@ theorem step_plp (s : State) (m : Mem) (hh : s.halted = false) (h : m.read s.pc 
   simp only [step, h, decode_28, Bool.false_eq_true, ite_false]
   rfl
 
+/-- Memory after JSR's two pushes. -/
+def jsrMem (s : State) (m : Mem) : Mem :=
+  (m.write (stackAddr s.sp) (UInt16.hi (s.pc + 2))).write (stackAddr (s.sp - 1))
+    (UInt16.lo (s.pc + 2))
+
 theorem step_jsr (s : State) (m : Mem) (hh : s.halted = false) (h : m.read s.pc = 0x20) :
-    step s m = ({ s with sp := s.sp - 1 - 1, pc := m.read16 (s.pc + 1) },
-      (m.write (stackAddr s.sp) (UInt16.hi (s.pc + 2))).write (stackAddr (s.sp - 1))
-        (UInt16.lo (s.pc + 2)), 6) := by
+    step s m =
+      ({ s with sp := s.sp - 1 - 1,
+                pc := UInt16.ofLoHi (m.read (s.pc + 1)) ((jsrMem s m).read (s.pc + 2)) },
+        jsrMem s m, 6) := by
   obtain ⟨a, x, y, sp, pc, p, halted⟩ := s
   subst hh
   simp only at h
@@ -203,24 +209,32 @@ theorem T_CPU_6_jsr_rts (s : State) (m : Mem) (hh : s.halted = false) (hj : m.re
     (hlo : m₂.read (stackAddr (s.sp - 1)) = (step s m).2.1.read (stackAddr (s.sp - 1))) :
     (step s₂ m₂).1.pc = s.pc + 3 ∧ (step s₂ m₂).1.sp = s.sp := by
   rw [step_jsr s m hh hj] at hsp hhi hlo
-  simp only [stack_read_write, ↓reduceIte, Ne.symm (stackAddr_sub_one_ne s.sp)] at hhi hlo
+  simp only [jsrMem, stack_read_write, ↓reduceIte, Ne.symm (stackAddr_sub_one_ne s.sp)] at hhi hlo
   simp only at hsp
   rw [step_rts s₂ m₂ hh₂ hr]
   simp only [hsp, show s.sp - 1 - 1 + 1 = s.sp - 1 by bv_decide,
     show s.sp - 1 + 1 = s.sp by bv_decide, hhi, hlo, UInt16.ofLoHi_lo_hi]
   exact ⟨by bv_decide, trivial⟩
 
-/-- Direct form: `JSR t` immediately followed by `RTS` at `t`. -/
+/-- Direct form: `JSR t` immediately followed by `RTS` at `t`. `ha1`/`ha2` exclude code whose
+operand high byte is overwritten by the pushes (then the target is not `read16 (pc+1)`). -/
 theorem T_CPU_6_jsr_rts_direct (s : State) (m : Mem) (hh : s.halted = false)
     (hj : m.read s.pc = 0x20) (hr : m.read (m.read16 (s.pc + 1)) = 0x60)
     (ht1 : m.read16 (s.pc + 1) ≠ stackAddr s.sp)
-    (ht2 : m.read16 (s.pc + 1) ≠ stackAddr (s.sp - 1)) :
+    (ht2 : m.read16 (s.pc + 1) ≠ stackAddr (s.sp - 1))
+    (ha1 : s.pc + 2 ≠ stackAddr s.sp) (ha2 : s.pc + 2 ≠ stackAddr (s.sp - 1)) :
     let r1 := step s m
     let r2 := step r1.1 r1.2.1
     r2.1.pc = s.pc + 3 ∧ r2.1.sp = s.sp ∧ r1.2.2 + r2.2.2 = 12 := by
   have hr' : (step s m).2.1.read (step s m).1.pc = 0x60 := by
+    have ht : UInt16.ofLoHi (m.read (s.pc + 1)) ((jsrMem s m).read (s.pc + 2)) =
+        m.read16 (s.pc + 1) := by
+      simp only [jsrMem, stack_read_write, Ne.symm ha1, Ne.symm ha2, ↓reduceIte, Mem.read16,
+        UInt16.add_assoc]
+      rfl
     rw [step_jsr s m hh hj]
-    simp only [stack_read_write, Ne.symm ht1, Ne.symm ht2, ↓reduceIte, hr]
+    simp only [ht]
+    simp only [jsrMem, stack_read_write, Ne.symm ht1, Ne.symm ht2, ↓reduceIte, hr]
   have hh' : (step s m).1.halted = false := by rw [step_jsr s m hh hj]; exact hh
   obtain ⟨hpc, hsp⟩ := T_CPU_6_jsr_rts s m hh hj _ _ hh' hr' rfl rfl rfl
   refine ⟨hpc, hsp, ?_⟩

@@ -226,10 +226,13 @@ def exec (e : Entry) (s : State) (m : Mem) (ea : UInt16) (crossed : Bool) : Stat
   -- jumps, calls, returns, interrupts
   | .JMP => ({ s with pc := ea }, m)
   | .JSR =>
+    -- Hardware order: read the target low byte, push PCH and PCL, *then* read the target
+    -- high byte at PC+2. If the pushes overwrite PC+2 (stack page code), the new byte is
+    -- used — found while proving T-REF-1 (`$01FC: JSR` with `SP = $FE`).
     let ret := s.pc + 2
     let (s2, m2) := push s m (UInt16.hi ret)
     let (s3, m3) := push s2 m2 (UInt16.lo ret)
-    ({ s3 with pc := ea }, m3)
+    ({ s3 with pc := UInt16.ofLoHi (m.read (s.pc + 1)) (m3.read (s.pc + 2)) }, m3)
   | .RTS =>
     let (s2, lo) := pull s m
     let (s3, hi) := pull s2 m
