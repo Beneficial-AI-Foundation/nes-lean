@@ -76,11 +76,12 @@ run: power on with <rom.nes> (iNES), run N frames (default 60; a frame ends at v
   then write the final frame as PNG/PPM and print its FNV-1a 64 frame hash (the golden-hash
   definition, over the 256x240 palette-index bytes) and the frames/s achieved.
   --every K   write/print every K-th frame instead: out.png -> out-000120.png, ...
-  --hash      print the hash of every frame (or every K-th with --every)
+  --hash      print the hash of every frame (default: final frame, plus every K-th with --every)
   --input F   controller-1 script: one `frame buttons` pair per line; the buttons hold from
-              that frame (0-based) until the next line. buttons = hex byte (`08`, `0x08`,
-              `$08`; bit 0..7 = A B Select Start Up Down Left Right) or letters from
-              `ABsSUDLR` (s = Select, S = Start), `-` = none. `#` starts a comment.
+              that frame (0-based) until the next line. buttons = letters from `ABsSUDLR`
+              (s = Select, S = Start), `-` = none, or a hex byte (`0x08`, `$08`, or bare
+              `08` when not all letters; bit 0..7 = A B Select Start Up Down Left Right).
+              `#` starts a comment.
               Example:  `0 -` / `30 S` / `32 -` / `90 AR`
 --bench [N]: CPU-only instruction throughput benchmark (default 50 000 000 instructions)."
 
@@ -186,14 +187,10 @@ def runRom (o : RunOpts) : IO UInt32 := do
     let k := f + 1
     let isLast := k == o.frames
     let sel := match o.every with | some e => k % e == 0 | none => isLast
-    if sel then
-      if o.every.isSome then writeFrame o n (some k)
-      if o.hash || o.every.isSome then
-        IO.println s!"frame {k}: {hex64 (frameHash n.ppu.frame)}"
-    if isLast then
-      if o.every.isNone then writeFrame o n none
-      if !(o.hash || o.every.isSome) || (o.every.isSome && !sel) then
-        IO.println s!"frame {k}: {hex64 (frameHash n.ppu.frame)}"
+    if sel && o.every.isSome then writeFrame o n (some k)
+    if isLast && o.every.isNone then writeFrame o n none
+    if (o.hash && o.every.isNone) || sel || isLast then
+      IO.println s!"frame {k}: {hex64 (frameHash n.ppu.frame)}"
   let secs := busy.toFloat / 1.0e9
   IO.println s!"run: {o.frames} frames, {n.clock} CPU cycles in {secs} s = \
     {o.frames.toFloat / secs} frames/s ({o.frames.toFloat / secs / 60.0988}x NTSC realtime)"
