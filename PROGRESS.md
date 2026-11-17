@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M3
 - **Current branch:** `m3-ppu`
-- **Next action:** M3 batch: CNROM mapper (pulled forward from M4) + T-CART-2 (CNROM) → `ppu_read_buffer` ∥ CLI `nes run ROM --frames N --png out.png` + frame hash; `spritecans-2011` as first homebrew title screen, golden hash.
+- **Next action:** M3 close — CI green on the last commit, definition of done, final PR body, `gh pr ready 4`; then start M4 (`m4-system` from `m3-ppu`).
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -96,7 +96,7 @@ Parallel tracks: {Bus + proofs} ∥ {Cart/Ines + NROM + proofs} ∥ {Controller}
 - [x] `Ppu/Sprites.lean` evaluation (overflow bug) + fetch; `Ppu/Render.lean` priority/mux
 - [x] `$2007` read buffer + T-PPU-7; NMI line + T-PPU-5
 - [x] Minimal `System` clocking sufficient to run blargg `ppu_vbl_nmi`, `sprite_hit_tests`, `sprite_overflow_tests`, `ppu_read_buffer` → green — 27/27 (CNROM pulled forward for `ppu_read_buffer`)
-- [ ] CLI: run N frames → PNG/PPM; first homebrew title screen; commit its frame hash as golden (never the ROM)
+- [x] CLI: run N frames → PNG/PPM; first homebrew title screen; commit its frame hash as golden (never the ROM)
 - [ ] PR M3 ready. Create `m4-system`.
 
 ### M4 — Playable (Phases 5, 7, 9)
@@ -139,6 +139,7 @@ Parallel tracks: Logic → Rules (sequential); then the four verified routines, 
 
 ## Benchmarks
 _(fill in: ISA instr/s at M1; frames/s at M4 and after the perf pass)_
+- 2026-11-17 M3 whole system (CPU+bus+NROM+PPU, no APU), `nes run spritecans.nes --frames 120`: **~70 frames/s, ~1.16× NTSC realtime** (-O3, Apple M5 Max), before any perf pass.
 - 2026-11-17 M1 ISA `step`, `nes --bench` (-O3, Apple M5 Max arm64, synthetic loop of LDA/ADC/STA abs,X/ROL/CMP/JSR/RTS/INX/DEX/BNE): **~35 M instr/s, ~115 M cycles/s, ~64× NTSC realtime** (median of 3).
   Generated C (`.lake/build/ir/Nes/Cpu/Isa.c`): memory written in place (`lean_array_fset`, no copies); per instruction ~3–4 small allocs: 2 `Prod` cells for `State × Mem × Nat` (Isa.lean:280), 1 pair from `exec` (Isa.lean:156), fresh `State` in `setZN` join points (65 sites), `Alu.RC` from `shiftOp` lambdas (Isa.lean:143); `Mem = Vector UInt8` is an array of boxed scalars (8 B/byte, `lean_unbox` per read); `AddrMode` `==` goes through `lean_nat_dec_eq`. M4 fixes: flat `StepOut` struct, `UInt` cycles, inline `exec`/`setZN`, enum shift op, `ByteArray`-backed memory with a `Vector` spec view, `match` instead of derived `BEq`.
 
@@ -202,6 +203,8 @@ the docs, test-harness surprises.
 - 2026-11-17 [system] CPU/PPU interleave: 2 PPU dots → CPU bus access → 1 dot → `Core.complete` with the current NMI line. 0/1/3 pre-dots fail `ppu_vbl_nmi` 05–08. Minimal System runs ~2.1 M CPU cycles/s (~1.2× realtime) before any perf work; blargg PPU suite ~24 s; full `lake test` ~70 s.
 - 2026-11-17 [system] RAM/CIRAM/palette are `ByteArray` with size fields (`ram_size` etc.) for `Fin`-indexed, check-free access. APU registers read as open bus, writes ignored (M5). OAM DMA simple (513/514, CPU not clocked) — M4 DMA item / T-SYS-2.
 - 2026-11-17 [rules] `get!`/`[i]!` are panicking accessors — treat them as `panic!` under `Nes/`; use total reads (`if h : i < a.size then a[i] else 0`, `getD`).
+- 2026-11-17 [tests] Golden hashes (FNV-1a 64 over frame palette indices, power-on, no input): spritecans @60 `07e982a570087379`, @120 `6e207aa1ad58d617`, @600 `77a4e4e325a92630`; frame 120 viewed: title text + credits + one can sprite. Frame 1 is the partial frame up to the first vblank.
+- 2026-11-17 [lean] `lake env lean --run` cannot load the precompiled `Nes` dylibs out of dependency order (dlopen "symbol not found") and falls back to the slow interpreter — use the compiled `Test`/`nes` exes for anything long.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -240,3 +243,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M3  Bus/Map+OpenBus+T-BUS-1, Cart/Ines+NROM+T-CART-1/2+T-BUS-2, Controller, PPU Types/Registers/Loopy+T-PPU-2; 150 theorems
 - 2026-11-17  M3  PPU Timing+T-PPU-1/5, Background (0 mismatches), Sprites+Render (4842 checks), $2007+T-PPU-7; 165 theorems
 - 2026-11-17  M3  Frontend palette/PNG/PPM/hash; Ppu.Step + minimal System; blargg PPU 26/27; renderLatch at (261,338) from even_odd_timing
+- 2026-11-17  M3  CNROM → blargg PPU 27/27; `nes run` CLI; spritecans golden hashes (frame viewed); ~70 fps; all M3 work items ticked
