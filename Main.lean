@@ -69,7 +69,7 @@ open Nes.Frontend
 def usage : String :=
 "usage:
   nes run <rom.nes> [--frames N] [--png out.png] [--ppm out.ppm] [--hash] [--every K]
-                    [--input script]
+                    [--input script] [--wav out.wav]
   nes --bench [N]
 
 run: power on with <rom.nes> (iNES), run N frames (default 60; a frame ends at vblank start),
@@ -83,6 +83,8 @@ run: power on with <rom.nes> (iNES), run N frames (default 60; a frame ends at v
               `08` when not all letters; bit 0..7 = A B Select Start Up Down Left Right).
               `#` starts a comment.
               Example:  `0 -` / `30 S` / `32 -` / `90 AR`
+  --wav F     record the APU output of the whole run (one mixer sample per CPU cycle,
+              downsampled to 44.1 kHz) as a 16-bit mono WAV file.
 --bench [N]: CPU-only instruction throughput benchmark (default 50 000 000 instructions)."
 
 /-- Parse a button field: hex (`08`, `0x08`, `$08`) or letters `ABsSUDLR`, `-` for none. -/
@@ -128,6 +130,7 @@ structure RunOpts where
   hash : Bool := false
   every : Option Nat := none
   input : Option String := none
+  wav : Option String := none
 
 def parseRunOpts : List String → RunOpts → Except String RunOpts
   | [], o => .ok o
@@ -141,6 +144,7 @@ def parseRunOpts : List String → RunOpts → Except String RunOpts
   | "--png" :: p :: r, o => parseRunOpts r { o with png := some p }
   | "--ppm" :: p :: r, o => parseRunOpts r { o with ppm := some p }
   | "--input" :: p :: r, o => parseRunOpts r { o with input := some p }
+  | "--wav" :: p :: r, o => parseRunOpts r { o with wav := some p }
   | "--hash" :: r, o => parseRunOpts r { o with hash := true }
   | a :: _, _ => .error s!"run: unexpected argument `{a}`"
 
@@ -174,12 +178,17 @@ def runRom (o : RunOpts) : IO UInt32 := do
   let mut si := 0
   let mut buttons : UInt8 := 0
   let mut busy : Nat := 0  -- nanoseconds spent emulating (excludes encoding/IO)
+  let mut ds := Downsampler.init
   for f in [0:o.frames] do
     while h : si < script.size do
       if script[si].1 ≤ f then buttons := script[si].2; si := si + 1 else break
     let t0 ← IO.monoNanosNow
     n := { n with pads := n.pads.setButtons buttons 0 }
-    n := n.runFrame
+    if o.wav.isSome then
+      let (n', ds') := n.runFrameAudio ds
+      n := n'; ds := ds'
+    else
+      n := n.runFrame
     -- force the frame before stopping the clock
     let chk := n.ppu.frame.size + n.clock.cpuCycles.toNat
     if chk == 0 then IO.println "unreachable"
@@ -191,6 +200,9 @@ def runRom (o : RunOpts) : IO UInt32 := do
     if isLast && o.every.isNone then writeFrame o n none
     if (o.hash && o.every.isNone) || sel || isLast then
       IO.println s!"frame {k}: {hex64 (frameHash n.ppu.frame)}"
+  if let some p := o.wav then
+    IO.FS.writeBinFile p (wav ds.out audioHz.toUInt32)
+    IO.println s!"wav: {p}: {ds.out.size / 2} samples at {audioHz} Hz"
   let secs := busy.toFloat / 1.0e9
   IO.println s!"run: {o.frames} frames, {n.clock.cpuCycles} CPU cycles in {secs} s = \
     {o.frames.toFloat / secs} frames/s ({o.frames.toFloat / secs / 60.0988}x NTSC realtime)"
