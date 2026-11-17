@@ -25,7 +25,7 @@ when the milestone's definition of done holds.
 | M1 | nestest green | 1 | `m1-cpu-isa` | `main` | #2 | ready for review |
 | M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | #3 | ready for review |
 | M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | #4 | ready for review |
-| M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | #5 | in progress |
+| M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | #5 | ready for review |
 | M5 | Sounds right | 6 | `m5-apu` | `m4-system` | — | not started |
 | M6 | The PPU theorem | 8 | `m6-ppu-theorem` | `m5-apu` | — | not started |
 | M7 | Verified 6502 programs | 10 | `m7-hoare` | `m6-ppu-theorem` | — | not started |
@@ -108,7 +108,7 @@ Parallel tracks: {System stepCycle/Frame + T-SYS-1/3} ∥ {DMA + T-SYS-2} ∥ {S
 - [x] MMC3 with A12 IRQ (+T-CART-2, T-CART-4); MMC3 IRQ test ROMs green — 15/15 Sharp-MMC3 ROMs; MMC3A/MMC6 ROMs known-fail (old IRQ behaviour not modelled)
 - [x] Golden frame hashes for 3+ homebrew ROMs across mappers (8 new: MMC1 ×2, UxROM ×2, AxROM, CNROM ×2, MMC3)
 - [x] Performance pass on the native binary: profile `stepCycle`, read its generated C, remove boxing/allocation/closures per PLAN.md §4 "Performance"; target ≥ real time (60 fps) on a homebrew ROM; record numbers (3-tick budget, then move on)
-- [ ] PR M4 ready. Create `m5-apu`.
+- [x] PR M4 ready. Create `m5-apu`.
 
 ### M5 — Sounds right (Phase 6)
 Parallel tracks: {FrameCounter + T-APU-1 + DMC DMA wiring} ∥ {pulse/triangle/noise units} ∥ {Dmc + T-APU-3} ∥ {Mixer + T-APU-2}; then WAV output → blargg APU suites.
@@ -259,3 +259,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M4  mappers MMC1/UxROM/AxROM/MMC3 (T-CART-2/3/4, T-BUS-2); System clock + DMA (T-SYS-1/2/3); blargg PPU 29/29; 194 theorems
 - 2026-11-17  M4  MMC3 ROMs 15/15; save states + T-REF-3/4; T-SYS-4; 8 new golden hashes (11 total); 209 theorems; only perf pass + PR ready left
 - 2026-11-17  M4  perf pass: ~180/170 fps (3.0×/2.8× realtime) from ~66/63; golden hashes unchanged; all M4 work items ticked
+- 2026-11-17  M4  CI green on 3f11587; definition of done holds; PR #5 marked ready
