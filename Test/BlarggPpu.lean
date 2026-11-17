@@ -16,8 +16,10 @@ Drives `Nes.System.Nes` (CPU core + PPU + NROM cart; no APU) with blargg's PPU t
 `run` prints one line per ROM and a summary, and returns the number of failing ROMs (those in
 `knownFail` are reported but not counted); it skips when the test data is absent.
 
-Status: all `ppu_vbl_nmi` (10), `sprite_hit_tests_2005.10.05` (11), `sprite_overflow_tests` (5)
-and `ppu_read_buffer` (1; a CNROM / mapper 3 cart) pass.
+Status: all `ppu_vbl_nmi` (10), `sprite_hit_tests_2005.10.05` (11), `sprite_overflow_tests` (5),
+`ppu_read_buffer` (1; a CNROM / mapper 3 cart), `oam_read` and `oam_stress` (M4, OAM DMA as a
+state machine) pass. Not listed: `sprdma_and_dmc_dma` (both variants) — they time OAM DMA against
+DMC DMA through the APU (time out without one); M5.
 -/
 
 namespace Test.BlarggPpu
@@ -78,17 +80,17 @@ def runRom (path : System.FilePath) (proto : Proto) (maxCycles : Nat) :
     | .error e => return (false, 0xFF, s!"load error: {e}")
   let mut n := Nes.powerOn cart
   let mut resetAt : Option UInt64 := none
-  while n.clock.toNat < maxCycles do
+  while n.clock.cpuCycles.toNat < maxCycles do
     n := Nes.runCycles chunk n
     if let some t := resetAt then
-      if n.clock ≥ t then
+      if n.clock.cpuCycles ≥ t then
         n := n.reset; resetAt := none
       continue
     match proto with
     | .status6000 =>
       if signatureOk n then
         let st := prgRam n 0
-        if st == 0x81 then resetAt := some (n.clock + resetDelay.toUInt64)
+        if st == 0x81 then resetAt := some (n.clock.cpuCycles + resetDelay.toUInt64)
         else if st != 0x80 then
           n := Nes.runCycles 1000 n
           return (st == 0, st, statusText n)
@@ -99,7 +101,7 @@ def runRom (path : System.FilePath) (proto : Proto) (maxCycles : Nat) :
         let code := n.ram.get! 0xF8
         return (code == 1, code, screenText n)
   let extra := if proto == .status6000 then statusText n else screenText n
-  return (false, 0xFF, s!"TIMEOUT after {n.clock} cycles at PC {n.cpu.ms.cpu.pc}; {extra}")
+  return (false, 0xFF, s!"TIMEOUT after {n.clock.cpuCycles} cycles at PC {n.cpu.ms.cpu.pc}; {extra}")
 
 def romDir : System.FilePath := "testdata/nes-test-roms"
 
@@ -114,6 +116,8 @@ def roms : List (String × Proto × Nat) :=
     "09-even_odd_frames", "10-even_odd_timing" ].map
       (fun r => (s!"ppu_vbl_nmi/rom_singles/{r}.nes", .status6000, 40000000)) ++
   [ ("ppu_read_buffer/test_ppu_read_buffer.nes", .status6000, 80000000) ] ++
+  [ ("oam_read/oam_read.nes", .status6000, 40000000),
+    ("oam_stress/oam_stress.nes", .status6000, 200000000) ] ++
   [ "01.basics", "02.alignment", "03.corners", "04.flip", "05.left_clip", "06.right_edge",
     "07.screen_bottom", "08.double_height", "09.timing_basics", "10.timing_order",
     "11.edge_timing" ].map

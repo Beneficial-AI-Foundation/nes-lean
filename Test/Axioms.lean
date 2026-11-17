@@ -222,7 +222,13 @@ def registry : List Name :=
   , `Nes.Cart.Mmc3.chrOffset_lt
   , `Nes.Cart.Cart.run_kind
   , `Nes.Cart.Cart.run_cpuRead_prg
-  , `Nes.Cart.Cart.run_ppuRead_chr ]
+  , `Nes.Cart.Cart.run_ppuRead_chr
+  , `Nes.System.Proofs.T_SYS_1_clock
+  , `Nes.System.Proofs.T_SYS_1_powerOn
+  , `Nes.System.Proofs.T_SYS_3_frame
+  , `Nes.System.Proofs.T_SYS_3_frames
+  , `Nes.System.Proofs.T_SYS_2_machine
+  , `Nes.System.Proofs.T_SYS_2_oam_dma ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
