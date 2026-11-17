@@ -6,9 +6,9 @@ Keep this file small: trim the tick log, never paste build output here.
 
 ## Resume here
 
-- **Current milestone:** M4
-- **Current branch:** `m4-system`
-- **Next action:** M4 close — CI green on the last commit, definition of done, final PR body, `gh pr ready 5`; then start M5 (`m5-apu` from `m4-system`).
+- **Current milestone:** M5
+- **Current branch:** `m5-apu`
+- **Next action:** M5 batch: FrameCounter + T-APU-1 ∥ pulse/triangle/noise units ∥ Dmc + T-APU-3 ∥ Mixer + T-APU-2 (separate files); then wire into `stepCycle`, DMC DMA, WAV, blargg APU suites.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -26,7 +26,7 @@ when the milestone's definition of done holds.
 | M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | #3 | ready for review |
 | M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | #4 | ready for review |
 | M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | #5 | ready for review |
-| M5 | Sounds right | 6 | `m5-apu` | `m4-system` | — | not started |
+| M5 | Sounds right | 6 | `m5-apu` | `m4-system` | — | in progress |
 | M6 | The PPU theorem | 8 | `m6-ppu-theorem` | `m5-apu` | — | not started |
 | M7 | Verified 6502 programs | 10 | `m7-hoare` | `m6-ppu-theorem` | — | not started |
 
@@ -260,3 +260,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M4  MMC3 ROMs 15/15; save states + T-REF-3/4; T-SYS-4; 8 new golden hashes (11 total); 209 theorems; only perf pass + PR ready left
 - 2026-11-17  M4  perf pass: ~180/170 fps (3.0×/2.8× realtime) from ~66/63; golden hashes unchanged; all M4 work items ticked
 - 2026-11-17  M4  CI green on 3f11587; definition of done holds; PR #5 marked ready
+- 2026-11-17  M5  started milestone (branch `m5-apu`, base `m4-system`)
