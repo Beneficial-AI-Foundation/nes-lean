@@ -45,3 +45,9 @@ import Nes.Frontend.Image
 import Nes.Ppu.Step
 import Nes.System.Nes
 import Nes.Cart.Mappers.CNROM
+import Nes.Cart.Mappers.MMC1
+import Nes.Cart.Mappers.UxROM
+import Nes.Cart.Mappers.AxROM
+import Nes.Cart.Mappers.MMC3
+import Nes.Cart.Proofs.MMC1
+import Nes.Cart.Proofs.MMC3
