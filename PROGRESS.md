@@ -23,7 +23,7 @@ when the milestone's definition of done holds.
 |---|---|---|---|---|---|---|
 | M0 | Scaffold | 0 | `m0-scaffold` | `main` | #1 | merged |
 | M1 | nestest green | 1 | `m1-cpu-isa` | `main` | #2 | ready for review |
-| M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | #3 | in progress |
+| M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | #3 | ready for review |
 | M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | — | not started |
 | M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | — | not started |
 | M5 | Sounds right | 6 | `m5-apu` | `m4-system` | — | not started |
@@ -83,7 +83,7 @@ Parallel tracks: {Micro → Harte trace runner} ∥ {Interrupts}; then T-REF-1 p
 - [x] T-CPU-7 NMI latency for an edge arriving mid-instruction — closed in attempt 3: `T_CPU_7_nmi_latency_edge` (edge in cycle j of an instruction or BRK: ≤ (8 − (j−1)) + 15 cycles), `_edge_irq` (edge in an IRQ sequence), `_mid` (invariant form); edge inside an NMI sequence deferred
 - [x] T-CPU-7 hijack with an NMI edge in BRK cycles 2–4 and NMI consumed at the core layer (needs a per-cycle line-schedule runner); IRQ-masked core theorem derived from the opcode instead of assumed I=1 (closed in attempt 2: `T_CPU_7_hijack_mid/late`, `T_CPU_7_irq_masked_opcode`, line-schedule runner `runSched`)
 - [x] blargg `cpu_*`, `instr_test-v5`, `cpu_interrupts_v2`, `cpu_dummy_reads/writes` green (a minimal NROM bus may be pulled forward from Phase 3) — 28/28 on test-only NROM/MMC1/CNROM bus + crude PPU/APU timing (`Test/Blargg.lean`); re-validate on the real PPU/APU in M3/M5
-- [ ] PR M2 ready. Create `m3-ppu`.
+- [x] PR M2 ready. Create `m3-ppu`.
 
 ### M3 — First frame (Phases 3, 4)
 Parallel tracks: {Bus + proofs} ∥ {Cart/Ines + NROM + proofs} ∥ {Controller} ∥ {PPU Types/Registers/Loopy + T-PPU-2} ∥ {PPU Timing + T-PPU-1}; then {Background} ∥ {Sprites + Render} ∥ {$2007 buffer + NMI + proofs}; then System clocking → blargg PPU suites ∥ CLI/PNG.
@@ -220,3 +220,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M2  T-CPU-7 (11 thms; latency + mid-BRK hijack open); blargg CPU suites 28/28 in lake test; full sweeps green after JSR fix; 101 theorems
 - 2026-11-17  M2  T-CPU-7 attempt 2: mid-BRK hijack, opcode-derived IRQ masking, NMI latency from instruction start (15 cycles); 109 theorems; mid-instruction-edge latency left for attempt 3
 - 2026-11-17  M2  T-CPU-7 attempt 3: mid-instruction NMI latency (≤ rest + 15) incl. BRK/IRQ sequences; NMI-in-NMI-sequence sub-case deferred; 112 theorems; all M2 work items ticked
+- 2026-11-17  M2  CI green on f45bd06; definition of done holds (T-REF-1 closed); PR #3 marked ready
