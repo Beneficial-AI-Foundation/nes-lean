@@ -67,3 +67,6 @@ import Nes.Apu.Pulse
 import Nes.Apu.Triangle
 import Nes.Apu.Noise
 import Nes.Apu.Proofs.Units
+import Nes.Apu.Mixer
+import Nes.Apu.Proofs.Mixer
+import Nes.Frontend.Wav

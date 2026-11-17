@@ -260,7 +260,18 @@ def registry : List Name :=
   , `Nes.Apu.Proofs.sweep_mute
   , `Nes.Apu.Proofs.pulse1_negate_ones_complement
   , `Nes.Apu.Proofs.pulse2_negate_twos_complement
-  , `Nes.Apu.Proofs.noise_lfsr_period ]
+  , `Nes.Apu.Proofs.noise_lfsr_period
+  , `Nes.Apu.Proofs.T_APU_2_mono_p1
+  , `Nes.Apu.Proofs.T_APU_2_mono_p2
+  , `Nes.Apu.Proofs.T_APU_2_mono_t
+  , `Nes.Apu.Proofs.T_APU_2_mono_n
+  , `Nes.Apu.Proofs.T_APU_2_mono_d
+  , `Nes.Apu.Proofs.T_APU_2_max
+  , `Nes.Apu.Proofs.T_APU_2_bounds
+  , `Nes.Apu.Proofs.T_APU_2_pulseTable
+  , `Nes.Apu.Proofs.T_APU_2_tndTable
+  , `Nes.Apu.Proofs.T_APU_2_pulseTable_err
+  , `Nes.Apu.Proofs.T_APU_2_tndTable_err ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

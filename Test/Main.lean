@@ -12,6 +12,7 @@ import Test.Golden
 import Test.Mmc3
 import Test.SaveState
 import Test.ApuUnits
+import Test.Wav
 
 /-- `lake test` driver. Each suite returns the number of failures.
 `lake test -- --full` also runs the full Harte sweeps (2.56 M cases, ISA and per-cycle). -/
@@ -31,6 +32,7 @@ def main (args : List String) : IO UInt32 := do
   fails := fails + (← Test.Mmc3.run)
   fails := fails + (← Test.SaveState.run)
   fails := fails + (← Test.ApuUnits.run)
+  fails := fails + (← Test.Wav.run)
   if args.contains "--full" then
     fails := fails + (← Test.CpuIsa.fullSweep)
     fails := fails + (← Test.CpuMicro.sweep "micro trace (full)" Test.CpuMicro.allOps 10000)
