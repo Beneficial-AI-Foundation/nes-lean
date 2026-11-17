@@ -12,7 +12,8 @@ supplied function (the buffered-read semantics are a separate item).
 
 Every CPU write stores the written byte `d` in `ioLatch`. Then, by register:
 
-* `$2000` (`writeCtrl`): `ctrl := d`; `t` bits 10–11 := `d` bits 0–1; `nmiOut := d.7 ∧ vblank`.
+* `$2000` (`writeCtrl`): `ctrl := d`; `t` bits 10–11 := `d` bits 0–1; `nmiOut := d.7 ∧ vblank`
+  (so enabling NMI while vblank is set raises the line at once: NMI retrigger, NESdev "NMI").
 * `$2001` (`writeMask`): `mask := d`.
 * `$2003` (`writeOamAddr`): `oamAddr := d`.
 * `$2004` (`writeOamData`): `oam[oamAddr] := d`, `oamAddr += 1` (mod 256).
@@ -24,7 +25,11 @@ Every CPU write stores the written byte `d` in `ioLatch`. Then, by register:
 * `$2007` (`writeData`): emit `VramWrite (v & 0x3FFF) d`, then `incAddr`.
 * `incAddr`: `v := (v + (32 if ctrl.2 else 1)) & 0x7FFF`.
 * `$2002` read (`readStatus`): returns `status` bits 5–7 over `ioLatch` bits 0–4; clears vblank,
-  `w := false`, `nmiOut := false`; `ioLatch :=` the returned byte.
+  `w := false`, `nmiOut := false`; `ioLatch :=` the returned byte. A read on a state at
+  `(scanline, dot) = (241, 0)` — one PPU clock before the vblank flag is set (position = dot
+  just executed, see `Nes.Ppu.Timing`) — also sets `suppressVbl`, so that frame's flag and NMI
+  never happen (NESdev "PPU frame timing": "Reading $2002 one PPU clock before reads it as clear
+  and never sets the flag or generates NMI for that frame").
 * `$2004` read (`readOamData`): `oam[oamAddr]`, with bits 2–4 of attribute bytes
   (`oamAddr % 4 = 2`) reading as 0; `ioLatch :=` the returned byte.
 * Reads of `$2000/1/3/5/6` return `ioLatch` and change nothing.
@@ -83,10 +88,12 @@ the during-rendering glitch (coarse X and Y increment) belongs to the timing ite
 @[inline] def writeData (s : State) (d : UInt8) : State × VramWrite :=
   (s.incAddr, ⟨s.vramAddr, d⟩)
 
-/-- `$2002` PPUSTATUS read. -/
+/-- `$2002` PPUSTATUS read (with the vblank-race suppression at `(241, 0)`). -/
 @[inline] def readStatus (s : State) : State × UInt8 :=
   let r := (s.status &&& 0xE0) ||| (s.ioLatch &&& 0x1F)
-  ({ s with status := s.status &&& 0x7F, w := false, nmiOut := false, ioLatch := r }, r)
+  let sup := s.suppressVbl || (s.dot == 0 && s.scanline == 241)
+  ({ s with status := s.status &&& 0x7F, w := false, nmiOut := false, ioLatch := r,
+            suppressVbl := sup }, r)
 
 /-- `$2004` OAMDATA read (attribute bytes read with bits 2–4 clear). -/
 @[inline] def readOamData (s : State) : State × UInt8 :=
