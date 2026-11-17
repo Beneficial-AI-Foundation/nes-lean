@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M1
 - **Current branch:** `m1-cpu-isa`
-- **Next action:** M1 batch: `Cpu/Types.lean` ∥ `Cpu/Decode.lean` ∥ Harte JSON loader (stub `State`) ∥ nestest log formatter (stub `State`).
+- **Next action:** M1 batch: `Cpu/Alu.lean` ∥ `Cpu/Proofs/Decode.lean` (T-CPU-3, T-CPU-4); then Alu proofs ∥ Isa.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -54,16 +54,16 @@ Parallel tracks: after items 1–2 land (they define the Lake layout), items 3�
 
 ### M1 — nestest green (Phase 1)
 Parallel tracks: {Types → Alu → Alu proofs} ∥ {Decode → Decode proofs} ∥ {Harte JSON loader, Nestest log formatter (against a stub `State`)}; then Isa (needs Alu + Decode) → Isa proofs ∥ Harte sweep ∥ nestest; T-CPU-8 ∥ benchmark.
-- [ ] `Cpu/Types.lean`: registers, `Flags` structure ↔ `UInt8` packing with round-trip lemma, `State`
+- [x] `Cpu/Types.lean`: registers, `Flags` structure ↔ `UInt8` packing with round-trip lemma, `State`
 - [ ] `Cpu/Alu.lean`: `spec` and `fast` versions of adc/sbc/cmp/asl/lsr/rol/ror/bit/inc/dec and the N/Z setters
 - [ ] `Cpu/Proofs/Alu.lean`: T-CPU-1, T-CPU-2, T-REF-2 (ALU) via `bv_decide`
-- [ ] `Cpu/Decode.lean`: `Instr`, `AddrMode`, 256-entry table (official + unofficial + 12 JAM), base cycles, page-cross flag
+- [x] `Cpu/Decode.lean`: `Instr`, `AddrMode`, 256-entry table (official + unofficial + 12 JAM), base cycles, page-cross flag
 - [ ] `Cpu/Proofs/Decode.lean`: T-CPU-3 (totality, JAM set, `aaabbbcc` agreement on official), T-CPU-4 (cycle table)
 - [ ] `Cpu/Isa.lean`: operand resolution per mode with page-cross detection; execution; `step : State → Mem → State × Mem × Nat`
 - [ ] `Cpu/Proofs/Isa.lean`: T-CPU-5 (zero-page wrap, page-cross condition, `JMP ($xxFF)` bug, PC wrap)
-- [ ] `Test/Harte.lean`: JSON loader for `nes6502` (flat 64 KiB memory), final-state diff; fast subset in `lake test`
+- [ ] `Test/Harte.lean`: JSON loader for `nes6502` (flat 64 KiB memory), final-state diff; fast subset in `lake test` — _loader, diff and `runFast` landed against an abstract `StepFn`; remaining: adapt `Isa.step`, wire `runFast` into `Test/Main.lean`_
 - [ ] Harte final-state sweep 256/256 green (fix the spec until green; log every hardware surprise as a gotcha)
-- [ ] `Test/Nestest.lean`: automated mode from `$C000`, log formatter, diff against golden log → green
+- [ ] `Test/Nestest.lean`: automated mode from `$C000`, log formatter, diff against golden log → green — _parser, NROM loader and `runNestest` landed against an abstract `StepFn`; remaining: adapt `Isa.step`, wire into `Test/Main.lean`, reach 8991/8991_
 - [ ] Benchmark ISA `step` (instr/s) in the native `nes --bench` binary (not `#eval`); inspect the generated C for `step` in `.lake/build/ir/` for boxing/allocation; record below
 - [ ] T-CPU-8: one Harte case per instruction class proved by `decide`
 - [ ] PR M1 ready. Create `m2-cpu-micro`.
@@ -152,6 +152,12 @@ the docs, test-harness surprises.
 - 2026-11-17 [lean] Inside `namespace Nes`, `UInt16.foo` resolves to `Nes.UInt16.foo`; core lemmas need `_root_.` (e.g. `_root_.UInt8.toNat_add`).
 - 2026-11-17 [lean] `simp [defs]` may close goals and leave `bv_decide` with "No goals"; use `simp only [UInt*.toBitVec_*]` then `bv_decide`. `bv_decide` handles `UInt8` goals (incl. `.toBitVec.msb`) directly.
 - 2026-11-17 [testdata] ProcessorTests `nes6502` = 256 JSON files, ~1.2 GB on disk (~54 s); `fetch-testdata.sh --cpu-only` skips it for fast CI.
+- 2026-11-17 [cpu] SingleStepTests record JAM opcodes as 3 cycles (opcode fetch + 2 reads, PC unchanged), not the conventional 2. Decode table uses 3.
+- 2026-11-17 [lean] A 256-entry `Array` literal: `#v[...]` and `⟨arr, rfl⟩` hit `maxRecDepth`; build the `Vector` as `⟨tableArray, by decide +kernel⟩`. Facts over all 256 entries by `decide +kernel` take ~3 s total.
+- 2026-11-17 [lean] `bv_decide` does not understand `!=` on `UInt8` (treats it as an atom → "potentially spurious counterexample"); rewrite with `bne_iff_ne`/`ne_eq` first (see `flag_bv` macro in `Cpu/Types.lean`).
+- 2026-11-17 [lean] v4.36 strings: `String.trim/take/drop` now go through `String.Slice`; `String.mk` deprecated → `String.ofList`; `if_true/if_false` deprecated → `ite_true/ite_false`. `Json.getNat?` does not range-check.
+- 2026-11-17 [tests] nestest copies code into RAM at `$0300` (log line 3349), so the trace's opcode bytes must be read from the model's memory — the nestest diff also checks writes.
+- 2026-11-17 [cpu] `State.p` stores the raw byte; PLP/RTI must decide bits 4/5 (6502: B ignored, U reads as 1) — settle against Harte in `Isa`.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -166,3 +172,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M0  README written; first CI run on push green (37 s)
 - 2026-11-17  M0  CI green on 7835771; definition of done holds; PR #1 marked ready
 - 2026-11-17  M1  started milestone (draft PR #2, base `m0-scaffold`)
+- 2026-11-17  M1  4 agents: Types, Decode (cycles validated vs all Harte files), Harte loader, nestest harness; build/test green
