@@ -27,7 +27,7 @@ when the milestone's definition of done holds.
 | M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | #4 | ready for review |
 | M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | #5 | ready for review |
 | M5 | Sounds right | 6 | `m5-apu` | `m4-system` | #6 | ready for review |
-| M6 | The PPU theorem | 8 | `m6-ppu-theorem` | `m5-apu` | — | in progress |
+| M6 | The PPU theorem | 8 | `m6-ppu-theorem` | `m5-apu` | #7 | in progress |
 | M7 | Verified 6502 programs | 10 | `m7-hoare` | `m6-ppu-theorem` | — | not started |
 
 Milestone definition of done (all milestones): `lake build` clean; `lake test` green;
@@ -275,4 +275,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M5  APU composed + wired (DMC DMA), --wav, blargg APU 29/32 (double_2007_read, sprdma ×2 known-fail); 136 fps; golden unchanged
 - 2026-11-17  M5  double_2007_read fixed (back-to-back $2007 refill delay); blargg APU 30/30; 240 theorems; all M5 items ticked
 - 2026-11-17  M5  CI green on e963a28; definition of done holds; PR #6 marked ready
-- 2026-11-17  M6  started milestone (branch `m6-ppu-theorem`, base `m5-apu`)
+- 2026-11-17  M6  started milestone (draft PR #7, base `m5-apu`)
