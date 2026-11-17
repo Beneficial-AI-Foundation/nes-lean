@@ -146,7 +146,10 @@ def registry : List Name :=
   , `Nes.Cpu.Proofs.T_CPU_7_nmi_latency
   , `Nes.Cpu.Proofs.T_CPU_7_nmi_latency_edge
   , `Nes.Cpu.Proofs.T_CPU_7_nmi_latency_edge_irq
-  , `Nes.Cpu.Proofs.T_CPU_7_nmi_latency_mid ]
+  , `Nes.Cpu.Proofs.T_CPU_7_nmi_latency_mid
+  , `Nes.Input.Proofs.controller_reads_in_order
+  , `Nes.Input.Proofs.controller_after_8
+  , `Nes.Input.Proofs.controller_strobe_high ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
