@@ -228,7 +228,22 @@ def registry : List Name :=
   , `Nes.System.Proofs.T_SYS_3_frame
   , `Nes.System.Proofs.T_SYS_3_frames
   , `Nes.System.Proofs.T_SYS_2_machine
-  , `Nes.System.Proofs.T_SYS_2_oam_dma ]
+  , `Nes.System.Proofs.T_SYS_2_oam_dma
+  , `Nes.System.Proofs.SaveState.T_REF_3_roundtrip
+  , `Nes.System.Proofs.SaveState.T_REF_3_injective
+  , `Nes.System.Proofs.Determinism.T_REF_4_prefix
+  , `Nes.System.Proofs.Determinism.T_REF_4_split
+  , `Nes.System.Proofs.Determinism.T_REF_4_script_prefix
+  , `Nes.System.Proofs.Determinism.T_REF_4_script_state
+  , `Nes.System.Proofs.Determinism.T_REF_4_hashes
+  , `Nes.System.Proofs.Determinism.T_REF_4_replay
+  , `Nes.System.Proofs.T_SYS_4_step_cpu
+  , `Nes.System.Proofs.T_SYS_4_apuIrq
+  , `Nes.System.Proofs.T_SYS_4_irq_wiring
+  , `Nes.System.Proofs.T_SYS_4_dots
+  , `Nes.System.Proofs.T_SYS_4_cpu_projection
+  , `Nes.System.Proofs.T_SYS_4_cpu_projection_mem
+  , `Nes.System.Proofs.T_SYS_4_nmi ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
