@@ -1,5 +1,5 @@
 ---
-description: One tick of the autonomous nes-lean build loop. Run under /loop. Works through PLAN.md milestone by milestone, one checklist item per tick, state in PROGRESS.md, one stacked PR per milestone. Does not stop until M7 is ready for review.
+description: One tick of the autonomous nes-lean build loop. Run under /loop. Works through PLAN.md milestone by milestone, a batch of independent checklist items per tick (fanned out to subagents), state in PROGRESS.md, one stacked PR per milestone. Does not stop until M7 is ready for review.
 ---
 
 You are one tick of a long-running autonomous loop building the formally verified NES
@@ -36,13 +36,28 @@ between ticks and across context compaction — treat it as the program counter.
      update the PR table.
    - If a background build/test you started last tick finished, act on its result first.
 
-3. **Pick** the first unchecked item of the current milestone (or the "Next action" line if
-   it is more specific). Never start the next milestone while the current one has unchecked
-   items.
+3. **Pick a batch.** Take the first unchecked item of the current milestone (or the "Next
+   action" line if it is more specific), then add every other unchecked item of the same
+   milestone that is *independent* of it and of each other, up to 4 items. Independent
+   means: disjoint files, and neither item needs the other's output (a proof needs its
+   definitions, a test needs the code it tests, "PR ready" is always last). The "Parallel
+   tracks" line under each milestone in PROGRESS.md says what the plan expects to run side
+   by side; the checklist order is otherwise a suggestion, not a dependency. Never start the
+   next milestone while the current one has unchecked items.
 
-4. **Do** exactly that item. Budget: one item per tick. Long builds/tests: run with a
-   10-minute timeout, or start them in the background and end the tick — the completion
-   notification wakes you.
+4. **Fan out and do.** One item → do it yourself. Two or more → spawn one subagent per
+   item with the `Agent` tool, all in a single message so they run concurrently, and wait
+   for all of them; do not duplicate their work meanwhile. Each brief must contain: the
+   item text, the PLAN.md section it implements (quote the section, the agent has no
+   context), the invariants above, the exact files it owns, and these rules: touch only
+   those files, do not edit PROGRESS.md / `Nes.lean` / `lakefile.toml` / CI, do not commit,
+   run `lake build <its modules>` before reporting, and report a ≤10-line summary ending
+   with the list of files changed and any gotcha learned. Shared files (`Nes.lean` import
+   list, `lakefile.toml`, PROGRESS.md, CI) are edited only by you, after the agents return.
+   Open-ended proof search is also a good subagent job even for a single item: give it the
+   theorem statement and a 3-attempt budget, keep the main context clean.
+   Long builds/tests: run with a 10-minute timeout, or start them in the background and end
+   the tick — the completion notification wakes you.
    - Proof items: attempt budget of 3 ticks per theorem. After that, split it into lemmas
      with their own checklist lines, or move it to "Deferred theorems" with the blocker —
      unless it is the milestone's headline theorem (T-REF-1 for M2, T-PPU-6 for M6), which
@@ -50,15 +65,18 @@ between ticks and across context compaction — treat it as the program counter.
    - Spec-vs-hardware mismatches found by tests: fix the spec, and record the hardware fact
      as a gotcha.
 
-5. **Verify**: `lake build` for touched modules; run the tests the item names; `grep -rn
-   "sorry" Nes/` must be empty before committing closed work.
+5. **Verify the integration yourself**: after the agents return, `lake build` of every
+   touched module together (agents only built their own); run the tests the items name;
+   `grep -rn "sorry" Nes/` must be empty before committing closed work. A subagent's
+   report is a claim, not proof — check its diff before ticking its item.
 
-6. **Record** in PROGRESS.md, in this order: tick the checklist item; set "Next action";
+6. **Record** in PROGRESS.md, in this order: tick the checklist items; set "Next action";
    append gotchas (anything that cost more than one attempt: Lean API names, tactic
-   behaviour, Lake/CI quirks, hardware facts that contradicted the docs); append one tick-log
-   line and trim the log to 20 lines; update benchmarks/deferred theorems if relevant.
-   Then commit (one commit per item, message `M<k>: <what>`), and `git push -u origin
-   <branch>`. If this milestone has no PR yet, open one now as a draft:
+   behaviour, Lake/CI quirks, hardware facts that contradicted the docs — including the
+   ones the subagents reported); append one tick-log line and trim the log to 20 lines;
+   update benchmarks/deferred theorems if relevant. Then commit — one commit per item,
+   staging that item's files, message `M<k>: <what>`; PROGRESS.md goes in the last commit
+   of the tick — and `git push -u origin <branch>`. If this milestone has no PR yet, open one now as a draft:
    `gh pr create --draft --base <base> --title "M<k>: <title>" --body-file -` and record the
    number in the table.
 

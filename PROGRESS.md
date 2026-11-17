@@ -32,9 +32,14 @@ no `sorry` and no `native_decide` under `Nes/`; axiom check passes for every the
 the registry; headline theorem(s) of the milestone closed (not deferred); PROGRESS.md
 updated; PR body summarises what was built, which theorems closed, which were deferred.
 
-## Checklists (one item ≈ one tick ≈ one commit)
+## Checklists (one item ≈ one commit; a tick runs up to 4 independent items in parallel via subagents)
+
+Items are independent when they touch disjoint files and neither needs the other's
+output. "Parallel tracks" lists what the plan expects to run side by side; order within
+a milestone is otherwise a suggestion. "PR ready" is always last.
 
 ### M0 — Scaffold
+Parallel tracks: after items 1–2 land (they define the Lake layout), items 3–7 are all independent.
 - [ ] `lake init` layout: `lakefile.toml` with lib `Nes`, exe `nes` (`Main.lean`), test driver `Test`; `lean-toolchain` = latest stable (v4.36.0; fall back to installed v4.35.0 if the download fails)
 - [ ] Batteries dependency pinned to the tag matching the toolchain; `lake update`; `lake build` green
 - [ ] `Nes/Prelude/Bits.lean`: first `UInt8`/`UInt16` ↔ `BitVec`/`Nat` bridging lemmas, one `bv_decide` and one `omega` smoke proof
@@ -45,6 +50,7 @@ updated; PR body summarises what was built, which theorems closed, which were de
 - [ ] Open draft PR (base `main`), CI green → mark ready. Create `m1-cpu-isa` from here.
 
 ### M1 — nestest green (Phase 1)
+Parallel tracks: {Types → Alu → Alu proofs} ∥ {Decode → Decode proofs} ∥ {Harte JSON loader, Nestest log formatter (against a stub `State`)}; then Isa (needs Alu + Decode) → Isa proofs ∥ Harte sweep ∥ nestest; T-CPU-8 ∥ benchmark.
 - [ ] `Cpu/Types.lean`: registers, `Flags` structure ↔ `UInt8` packing with round-trip lemma, `State`
 - [ ] `Cpu/Alu.lean`: `spec` and `fast` versions of adc/sbc/cmp/asl/lsr/rol/ror/bit/inc/dec and the N/Z setters
 - [ ] `Cpu/Proofs/Alu.lean`: T-CPU-1, T-CPU-2, T-REF-2 (ALU) via `bv_decide`
@@ -60,6 +66,7 @@ updated; PR body summarises what was built, which theorems closed, which were de
 - [ ] PR M1 ready. Create `m2-cpu-micro`.
 
 ### M2 — Cycle-exact and proved (Phase 2)
+Parallel tracks: {Micro → Harte trace runner} ∥ {Interrupts}; then T-REF-1 prefix lemmas ∥ suffix lemmas (one subagent per lemma group, disjoint files `Proofs/Refinement/Prefix*.lean`, `Suffix*.lean`) ∥ T-CPU-6 ∥ T-CPU-7 ∥ blargg CPU suites; then table discharge.
 - [ ] `Cpu/Micro.lean`: `MicroOp` inductive, mode-prefix and instruction-suffix programs, one-`BusOp`-per-cycle interpreter, instruction-boundary detection
 - [ ] Harte per-cycle trace runner (addr, value, r/w incl. dummy reads and RMW double write) → 256/256
 - [ ] `Cpu/Interrupts.lean`: NMI edge, IRQ level + `I`, RESET, polling point, CLI/SEI/PLP delay, BRK/NMI hijack
@@ -72,6 +79,7 @@ updated; PR body summarises what was built, which theorems closed, which were de
 - [ ] PR M2 ready. Create `m3-ppu`.
 
 ### M3 — First frame (Phases 3, 4)
+Parallel tracks: {Bus + proofs} ∥ {Cart/Ines + NROM + proofs} ∥ {Controller} ∥ {PPU Types/Registers/Loopy + T-PPU-2} ∥ {PPU Timing + T-PPU-1}; then {Background} ∥ {Sprites + Render} ∥ {$2007 buffer + NMI + proofs}; then System clocking → blargg PPU suites ∥ CLI/PNG.
 - [ ] `Bus/Map.lean`, `Bus/OpenBus.lean`; `Bus/Proofs/Mirroring.lean` T-BUS-1; T-BUS-2
 - [ ] `Cart/Ines.lean` + serializer; T-CART-1; `Cart/Mapper.lean` interface; `Mappers/NROM.lean`; T-CART-2 (NROM)
 - [ ] `Input/Controller.lean`
@@ -85,6 +93,7 @@ updated; PR body summarises what was built, which theorems closed, which were de
 - [ ] PR M3 ready. Create `m4-system`.
 
 ### M4 — Playable (Phases 5, 7, 9)
+Parallel tracks: {System stepCycle/Frame + T-SYS-1/3} ∥ {DMA + T-SYS-2} ∥ {SaveState/input + T-REF-3/4} ∥ {MMC1, UxROM, CNROM, AxROM — one agent per mapper} ∥ {MMC3 + A12 IRQ}; then golden hashes ∥ perf pass.
 - [ ] `System/Nes.lean` `stepCycle`, `runDots`, `runFrame`; interrupt wiring; T-SYS-1, T-SYS-3
 - [ ] `Bus/Dma.lean` OAM DMA (513/514) ; T-SYS-2
 - [ ] `System/SaveState.lean` + T-REF-3; input script + T-REF-4; T-SYS-4
@@ -95,6 +104,7 @@ updated; PR body summarises what was built, which theorems closed, which were de
 - [ ] PR M4 ready. Create `m5-apu`.
 
 ### M5 — Sounds right (Phase 6)
+Parallel tracks: {FrameCounter + T-APU-1 + DMC DMA wiring} ∥ {pulse/triangle/noise units} ∥ {Dmc + T-APU-3} ∥ {Mixer + T-APU-2}; then WAV output → blargg APU suites.
 - [ ] `Apu/FrameCounter.lean` (4/5-step, IRQ) + T-APU-1; DMC DMA cycle stealing wired into `stepCycle`
 - [ ] Pulse ×2, triangle, noise, length counters, envelopes, sweeps
 - [ ] `Apu/Dmc.lean` + T-APU-3
@@ -103,6 +113,7 @@ updated; PR body summarises what was built, which theorems closed, which were de
 - [ ] PR M5 ready. Create `m6-ppu-theorem`.
 
 ### M6 — The PPU theorem (Phase 8)
+Parallel tracks: {Declarative renderer → shifter invariant → background half} ∥ {T-PPU-3} ∥ {T-PPU-4}; then sprite half + mux (needs all three).
 - [ ] `Ppu/Declarative.lean` reference renderer
 - [ ] Shifter invariant lemma (shifter contents = pattern bits of tile at `v` + 2)
 - [ ] Background half of T-PPU-6
@@ -112,6 +123,7 @@ updated; PR body summarises what was built, which theorems closed, which were de
 - [ ] PR M6 ready. Create `m7-hoare`.
 
 ### M7 — Verified 6502 programs (Phase 10)
+Parallel tracks: Logic → Rules (sequential); then the four verified routines, one agent each.
 - [ ] `Hoare/Logic.lean`: triples over `Cpu.Isa`, memory separation predicate, soundness
 - [ ] Rules: sequencing, consequence, branch, loop (fuel), JSR/RTS frame rule
 - [ ] Verified routines: 16-bit add, `memcpy`, 8×8→16 multiply
