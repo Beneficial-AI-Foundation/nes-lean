@@ -181,7 +181,7 @@ def runRom (o : RunOpts) : IO UInt32 := do
     n := { n with pads := n.pads.setButtons buttons 0 }
     n := n.runFrame
     -- force the frame before stopping the clock
-    let chk := n.ppu.frame.size + n.clock.toNat
+    let chk := n.ppu.frame.size + n.clock.cpuCycles.toNat
     if chk == 0 then IO.println "unreachable"
     busy := busy + ((← IO.monoNanosNow) - t0)
     let k := f + 1
@@ -192,7 +192,7 @@ def runRom (o : RunOpts) : IO UInt32 := do
     if (o.hash && o.every.isNone) || sel || isLast then
       IO.println s!"frame {k}: {hex64 (frameHash n.ppu.frame)}"
   let secs := busy.toFloat / 1.0e9
-  IO.println s!"run: {o.frames} frames, {n.clock} CPU cycles in {secs} s = \
+  IO.println s!"run: {o.frames} frames, {n.clock.cpuCycles} CPU cycles in {secs} s = \
     {o.frames.toFloat / secs} frames/s ({o.frames.toFloat / secs / 60.0988}x NTSC realtime)"
   return 0
 

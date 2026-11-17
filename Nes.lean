@@ -51,3 +51,6 @@ import Nes.Cart.Mappers.AxROM
 import Nes.Cart.Mappers.MMC3
 import Nes.Cart.Proofs.MMC1
 import Nes.Cart.Proofs.MMC3
+import Nes.Bus.Dma
+import Nes.System.Proofs.Clock
+import Nes.System.Proofs.Dma
