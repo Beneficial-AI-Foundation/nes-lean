@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M1
 - **Current branch:** `m1-cpu-isa`
-- **Next action:** M1 batch: `Cpu/Isa.lean` ∥ `Cpu/Proofs/Alu.lean` (T-CPU-1, T-CPU-2, T-REF-2).
+- **Next action:** M1 batch: `Cpu/Proofs/Isa.lean` (T-CPU-5) ∥ native ISA benchmark (`nes --bench`) ∥ T-CPU-8 (`decide` on Harte cases); then PR M1 ready.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -56,14 +56,14 @@ Parallel tracks: after items 1–2 land (they define the Lake layout), items 3�
 Parallel tracks: {Types → Alu → Alu proofs} ∥ {Decode → Decode proofs} ∥ {Harte JSON loader, Nestest log formatter (against a stub `State`)}; then Isa (needs Alu + Decode) → Isa proofs ∥ Harte sweep ∥ nestest; T-CPU-8 ∥ benchmark.
 - [x] `Cpu/Types.lean`: registers, `Flags` structure ↔ `UInt8` packing with round-trip lemma, `State`
 - [x] `Cpu/Alu.lean`: `spec` and `fast` versions of adc/sbc/cmp/asl/lsr/rol/ror/bit/inc/dec and the N/Z setters
-- [ ] `Cpu/Proofs/Alu.lean`: T-CPU-1, T-CPU-2, T-REF-2 (ALU) via `bv_decide`
+- [x] `Cpu/Proofs/Alu.lean`: T-CPU-1, T-CPU-2, T-REF-2 (ALU) via `bv_decide`
 - [x] `Cpu/Decode.lean`: `Instr`, `AddrMode`, 256-entry table (official + unofficial + 12 JAM), base cycles, page-cross flag
 - [x] `Cpu/Proofs/Decode.lean`: T-CPU-3 (totality, JAM set, `aaabbbcc` agreement on official), T-CPU-4 (cycle table)
-- [ ] `Cpu/Isa.lean`: operand resolution per mode with page-cross detection; execution; `step : State → Mem → State × Mem × Nat`
+- [x] `Cpu/Isa.lean`: operand resolution per mode with page-cross detection; execution; `step : State → Mem → State × Mem × Nat`
 - [ ] `Cpu/Proofs/Isa.lean`: T-CPU-5 (zero-page wrap, page-cross condition, `JMP ($xxFF)` bug, PC wrap)
-- [ ] `Test/Harte.lean`: JSON loader for `nes6502` (flat 64 KiB memory), final-state diff; fast subset in `lake test` — _loader, diff and `runFast` landed against an abstract `StepFn`; remaining: adapt `Isa.step`, wire `runFast` into `Test/Main.lean`_
-- [ ] Harte final-state sweep 256/256 green (fix the spec until green; log every hardware surprise as a gotcha)
-- [ ] `Test/Nestest.lean`: automated mode from `$C000`, log formatter, diff against golden log → green — _parser, NROM loader and `runNestest` landed against an abstract `StepFn`; remaining: adapt `Isa.step`, wire into `Test/Main.lean`, reach 8991/8991_
+- [x] `Test/Harte.lean`: JSON loader for `nes6502` (flat 64 KiB memory), final-state diff; fast subset in `lake test`
+- [x] Harte final-state sweep 256/256 green (fix the spec until green; log every hardware surprise as a gotcha)
+- [x] `Test/Nestest.lean`: automated mode from `$C000`, log formatter, diff against golden log → green
 - [ ] Benchmark ISA `step` (instr/s) in the native `nes --bench` binary (not `#eval`); inspect the generated C for `step` in `.lake/build/ir/` for boxing/allocation; record below
 - [ ] T-CPU-8: one Harte case per instruction class proved by `decide`
 - [ ] PR M1 ready. Create `m2-cpu-micro`.
@@ -160,6 +160,9 @@ the docs, test-harness surprises.
 - 2026-11-17 [cpu] `State.p` stores the raw byte; PLP/RTI must decide bits 4/5 (6502: B ignored, U reads as 1) — settle against Harte in `Isa`.
 - 2026-11-17 [git] PR #1 was rebase-merged (new SHAs on `main`); restack with `git rebase --onto origin/main <old m0 tip> m1-cpu-isa`, not plain `git rebase main`.
 - 2026-11-17 [proofs] One-operand ALU equivalences (`∀ v : UInt8, fast.asl v = spec.asl v`) close by plain `decide` in ~0.4 s; `fast.adc = spec.adc` needs bridging lemmas (`UInt16.toNat_toUInt8`, `toNat_and`) or `bv_decide` on `toBitVec`.
+- 2026-11-17 [cpu] Harte ground truth: PHP/BRK push `P | $30`; PLP/RTI load `(v & $CF) | $20`. JAM leaves all registers incl. PC unchanged (3 cycles). XAA: `A := (A | $EE) & X & imm`; LAX #imm: `A,X := (A | $EE) & imm`. SHY/SHX/AHX/TAS store `reg & (H+1)` (H = base high byte) and on page cross that value replaces the address high byte; TAS sets `SP := A & X`. ARR: C = bit 6, V = bit 6 ^ bit 5.
+- 2026-11-17 [tests] Full Harte sweep (2.56 M cases, final state + cycle count) takes ~2m54 in the native `Test` exe (`lake test -- --full`) vs ~3m40 interpreted; fast subset + nestest ~6 s.
+- 2026-11-17 [cpu] `Isa.exec` reads `m.read ea` even for stores/implied modes — harmless on pure memory, but must not leak into the M3 bus (side-effecting reads).
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -176,3 +179,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M1  started milestone (draft PR #2, base `m0-scaffold`)
 - 2026-11-17  M1  4 agents: Types, Decode (cycles validated vs all Harte files), Harte loader, nestest harness; build/test green
 - 2026-11-17  M1  PR #1 merged → rebased M1 onto main; Alu (spec+fast) and T-CPU-3/T-CPU-4 proved; 8 theorems in registry
+- 2026-11-17  M1  Isa.step: Harte 2,560,000/2,560,000 (+cycles), nestest 8991/8991; ALU proofs T-CPU-1/2, T-REF-2 (22 theorems); CI fetches testdata
