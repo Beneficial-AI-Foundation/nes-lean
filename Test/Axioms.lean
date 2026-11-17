@@ -36,7 +36,13 @@ open Lean
 /-- Headline theorems. Every headline theorem gets added here. -/
 def registry : List Name :=
   [ `Nes.Bits.smoke_bv_decide
-  , `Nes.Bits.smoke_omega ]
+  , `Nes.Bits.smoke_omega
+  , `Nes.Cpu.Proofs.T_CPU_3_total
+  , `Nes.Cpu.Proofs.T_CPU_3_jam
+  , `Nes.Cpu.Proofs.T_CPU_3_struct
+  , `Nes.Cpu.Proofs.T_CPU_3_struct_exact
+  , `Nes.Cpu.Proofs.T_CPU_4_cycles
+  , `Nes.Cpu.Proofs.T_CPU_4_pageCross ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
