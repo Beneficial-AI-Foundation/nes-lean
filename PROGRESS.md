@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M3
 - **Current branch:** `m3-ppu`
-- **Next action:** M3 batch: Bus/Map+OpenBus+T-BUS-1/2 ∥ Cart/Ines+NROM+T-CART-1/2 ∥ Input/Controller ∥ PPU Types/Registers/Loopy+T-PPU-2; then PPU Timing+T-PPU-1, Background, Sprites+Render, $2007/NMI.
+- **Next action:** M3 batch: `Ppu/Timing.lean` + T-PPU-1 ∥ `Ppu/Background.lean` ∥ `Ppu/Sprites.lean` + `Ppu/Render.lean` ∥ `$2007` buffer + T-PPU-7 / NMI line + T-PPU-5 (check file overlap first: all touch `Ppu.State`).
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -87,10 +87,10 @@ Parallel tracks: {Micro → Harte trace runner} ∥ {Interrupts}; then T-REF-1 p
 
 ### M3 — First frame (Phases 3, 4)
 Parallel tracks: {Bus + proofs} ∥ {Cart/Ines + NROM + proofs} ∥ {Controller} ∥ {PPU Types/Registers/Loopy + T-PPU-2} ∥ {PPU Timing + T-PPU-1}; then {Background} ∥ {Sprites + Render} ∥ {$2007 buffer + NMI + proofs}; then System clocking → blargg PPU suites ∥ CLI/PNG.
-- [ ] `Bus/Map.lean`, `Bus/OpenBus.lean`; `Bus/Proofs/Mirroring.lean` T-BUS-1; T-BUS-2
-- [ ] `Cart/Ines.lean` + serializer; T-CART-1; `Cart/Mapper.lean` interface; `Mappers/NROM.lean`; T-CART-2 (NROM)
-- [ ] `Input/Controller.lean`
-- [ ] `Ppu/Types.lean`, `Ppu/Registers.lean`, `Ppu/Loopy.lean`; `Ppu/Proofs/Loopy.lean` T-PPU-2
+- [x] `Bus/Map.lean`, `Bus/OpenBus.lean`; `Bus/Proofs/Mirroring.lean` T-BUS-1; T-BUS-2
+- [x] `Cart/Ines.lean` + serializer; T-CART-1; `Cart/Mapper.lean` interface; `Mappers/NROM.lean`; T-CART-2 (NROM)
+- [x] `Input/Controller.lean`
+- [x] `Ppu/Types.lean`, `Ppu/Registers.lean`, `Ppu/Loopy.lean`; `Ppu/Proofs/Loopy.lean` T-PPU-2
 - [ ] `Ppu/Timing.lean` (dot/scanline, vblank, odd-frame skip); T-PPU-1
 - [ ] `Ppu/Background.lean` fetch pipeline + shifters
 - [ ] `Ppu/Sprites.lean` evaluation (overflow bug) + fetch; `Ppu/Render.lean` priority/mux
@@ -191,6 +191,10 @@ the docs, test-harness surprises.
 - 2026-11-17 [cpu] NMI latency from the *edge* is not `maxInstrCycles + 7`: a taken branch without page cross polls only in cycle 1, so an edge in its cycle 2 waits for the next instruction (2 + 8 + 7 = 17 cycles). Bound from the instruction start (edge in fetch cycle) is 15 and is proved.
 - 2026-11-17 [lean] `rfl`/`apply` on goals containing `uops ms.op` hits max recursion — `dsimp only` then `refine` with explicit args, or `generalize`.
 - 2026-11-17 [lean] Don't wrap a line schedule like `hjNmiFrom j (fun _ => irq)` in an `abbrev`: checking `runSched 7 (abbrev…)` against `runSched 7 (hjNmiFrom…)` unfolds `runSched` and hits whnf heartbeat limits — write it out.
+- 2026-11-17 [lean] Checking all 65 536 `UInt16` values with `decide +kernel` is impractical (deep recursion; split 256×256 took 17 s for one trivial lemma) — use `toNat` + `omega`, with private Nat-level simp lemmas because core `UInt16.toNat_and` fires first. `congr 1` on `Target.ram` goals hits max recursion; use `congrArg`.
+- 2026-11-17 [lean] Inside `{ s with t := … }` numeric literals with `&&&`/`~~~` default to `Nat` — ascribe `(0x0C00 : UInt16)`. `f^[n]` needs Mathlib; use `Nat.repeat`. `h ▸ off.isLt` works where `rw` fails with "motive is not type correct" on `Fin rom.chrLen`.
+- 2026-11-17 [cart] iNES loader validated on all 290 `.nes` under `testdata/nes-test-roms`: 288 serialize back byte-exact; `flowing_palette.nes` has "blargg" in bytes 8–13 (archaic iNES, junk dropped by design); `LINUSMUS.NES` has magic `NES\x1B` and is rejected. Non-NROM ROMs use mappers 1, 2, 3, 4, 5, 7, 11, 22, 28, 34.
+- 2026-11-17 [ppu] `incAddr` does not yet model the `$2007`-during-rendering glitch (coarse X and Y increment) — belongs with PPU timing.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -200,6 +204,8 @@ the docs, test-harness surprises.
 - 2026-11-17 T-CPU-8 is proved by `simp` + `decide` over a universally quantified memory rather than kernel `decide` on a concrete 64 KiB memory (infeasible in the kernel). The statement is stronger than the plan's (holds for every memory agreeing with the case).
 - 2026-11-17 Spec-vs-hardware mismatch (JSR operand read order) found by the T-REF-1 proof rather than a test: fixed the spec (`Isa.exec`) per the loop rule; T-CPU-6's direct JSR;RTS theorem gained two no-overlap hypotheses (the general form is unchanged).
 - 2026-11-17 Unstable opcode `$AB`: SingleStepTests behaviour kept (PLAN §10.3) over blargg's; the three blargg ROMs that test it are excluded from the run list.
+- 2026-11-17 Mapper interface is closure-free (`inductive MapperState` + `@[inline]` match dispatch, with `class Mapper σ` carrying the PLAN §5.2 operation set) instead of a structure of functions — PLAN §4 hot-path rules (no closures per cycle) take precedence. `cpuRead` takes the open-bus byte instead of returning `Option`.
+- 2026-11-17 PPU loopy `v`/`t` are `UInt16` (and `x`, `dot`, `scanline` UInt) with `BitVec` field views for proofs, instead of `BitVec 15` storage (Nat-backed, boxed at runtime); OAM, secondary OAM and the frame buffer are `ByteArray` (unboxed) rather than `Vector UInt8` (8 B/byte boxed) — a refinement of PLAN §10.4 for large byte buffers. ROM PRG/CHR are `ByteArray` with `Fin size` bank offsets. Emphasis is one byte per frame, not per pixel.
 
 ## Tick log (keep the last 20 lines only)
 _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
@@ -222,3 +228,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M2  T-CPU-7 attempt 3: mid-instruction NMI latency (≤ rest + 15) incl. BRK/IRQ sequences; NMI-in-NMI-sequence sub-case deferred; 112 theorems; all M2 work items ticked
 - 2026-11-17  M2  CI green on f45bd06; definition of done holds (T-REF-1 closed); PR #3 marked ready
 - 2026-11-17  M3  started milestone (draft PR #4, base `m2-cpu-micro`)
+- 2026-11-17  M3  Bus/Map+OpenBus+T-BUS-1, Cart/Ines+NROM+T-CART-1/2+T-BUS-2, Controller, PPU Types/Registers/Loopy+T-PPU-2; 150 theorems
