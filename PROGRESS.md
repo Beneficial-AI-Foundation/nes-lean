@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M2
 - **Current branch:** `m2-cpu-micro`
-- **Next action:** M2 batch: T-REF-1 suffix classes split by file (`Refinement/SuffixRmw.lean` ∥ `SuffixBranch.lean` ∥ `SuffixControl.lean` (jsr rts rti brk jmpAbs jmpInd) ∥ `SuffixStack.lean` (push pull jam)); then table discharge; T-CPU-7 and blargg after.
+- **Next action:** M2 batch: `Cpu/Proofs/Interrupts.lean` T-CPU-7 (simulation over `Cpu.Core`) ∥ blargg CPU suites (minimal NROM bus + `$6000` protocol runner); then PR M2 ready.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -75,8 +75,8 @@ Parallel tracks: {Micro → Harte trace runner} ∥ {Interrupts}; then T-REF-1 p
 - [x] `Cpu/Interrupts.lean`: NMI edge, IRQ level + `I`, RESET, polling point, CLI/SEI/PLP delay, BRK/NMI hijack
 - [x] Wire `Interrupts` into `Micro`: `sampleCycle` every cycle (poll = `isPollCycle`/`branchPollCycle`, I via `pollIFlag`), `atBoundary` → `ack` + `requestInterrupt`, `vectorFetch` before cycle 5's sample (hijack); needed by T-CPU-7 and the blargg interrupt suites
 - [x] `Cpu/Proofs/Refinement.lean` T-REF-1: 13 addressing-prefix lemmas
-- [ ] T-REF-1: ~20 instruction-suffix lemmas — _done: read (86 opcodes), imm (24), imp (28), write (22); remaining 11 classes / 96 opcodes: rmw (66), jam (12), branch (8), push, pull, jsr, rts, rti, brk, jmpAbs, jmpInd_
-- [ ] T-REF-1: table discharge; `#print axioms` clean
+- [x] T-REF-1: ~20 instruction-suffix lemmas
+- [x] T-REF-1: table discharge; `#print axioms` clean
 - [x] `Cpu/Proofs/Stack.lean` T-CPU-6
 - [ ] `Cpu/Proofs/Interrupts.lean` T-CPU-7
 - [ ] blargg `cpu_*`, `instr_test-v5`, `cpu_interrupts_v2`, `cpu_dummy_reads/writes` green (a minimal NROM bus may be pulled forward from Phase 3)
@@ -176,6 +176,9 @@ the docs, test-harness surprises.
 - 2026-11-17 [lean] Rewriting with `runInstr_last`: name `p` explicitly and leave `hu` as a side goal — unifying `?ms.op` with a concrete op hits max recursion. Unfold micro `exec` in `h1` before `generalize decode (m.read s.pc)`.
 - 2026-11-17 [proofs] Step lemmas for fixed opcodes: `obtain ⟨..⟩ := s; subst hh` before `simp only [step, …]`, or simp rewrites `halted` on the RHS too. PHA;PLA / PHP;PLP need `s.pc + 1 ≠ stackAddr s.sp` in flat memory (the push could overwrite the next opcode).
 - 2026-11-17 [cpu] Core power-on: `Core.powerOn s` sets SP := $00 then runs RESET (ends SP=$FD, I set, PC from $FFFC); warm reset leaves SP−3. A JAM-halted core only accepts RESET.
+- 2026-11-17 [cpu] **Spec bug found by proof:** JSR reads the target high byte *after* pushing PCH/PCL. With JSR at `$01FC`, SP=`$FE`, the PCH push overwrites the operand byte `$01FE`; `Isa.exec` used the stale byte. Random Harte cases never hit it. Fixed in `Isa.exec`.
+- 2026-11-17 [proofs] T-REF-1 suffix tactics: wrap each cycle as its own `ms.cycle m = (ms', m')` fact + `runInstr_cyc` (unfolding several cycles with `runInstr_succ` explodes); `runInstr 7` in one simp times out; case-split PLA/PLP before the big simp; keep programs as literal `#[...]` in `hu` (an `abbrev` blocks `Array.getD` reduction); `show f + 2 = f + 1 + 1 from rfl` when Lean normalised the fuel. ROL/ROR/RRA/ISC need `State.c`/`State.getBit` in the simp set; BRK needs `State.setI`/`setBit`.
+- 2026-11-17 [proofs] `T_REF_1` depends on one `_native.bv_decide` axiom through `Nes.UInt16.ofLoHi_lo_hi` (Bits); everything else in T-REF-1 is standard axioms only. Replacing that one lemma's proof would make T-REF-1 fully kernel-checked.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -183,6 +186,7 @@ the docs, test-harness surprises.
 - 2026-11-17 `bv_decide` (named in PLAN.md §4 as the bit-level proof tool) is accepted even though in v4.36 it trusts compiled evaluation via a per-theorem `_native.bv_decide` axiom; `native_decide` stays banned. The trust is confined to `allowedNativeTactics` in `Test/Axioms.lean`.
 - 2026-11-17 The product is the native binary from Lean's C backend with `-O3`; hot-path rules in PLAN.md §4 apply from M1 (PLAN.md §10 decision 6).
 - 2026-11-17 T-CPU-8 is proved by `simp` + `decide` over a universally quantified memory rather than kernel `decide` on a concrete 64 KiB memory (infeasible in the kernel). The statement is stronger than the plan's (holds for every memory agreeing with the case).
+- 2026-11-17 Spec-vs-hardware mismatch (JSR operand read order) found by the T-REF-1 proof rather than a test: fixed the spec (`Isa.exec`) per the loop rule; T-CPU-6's direct JSR;RTS theorem gained two no-overlap hypotheses (the general form is unchanged).
 
 ## Tick log (keep the last 20 lines only)
 _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
@@ -199,3 +203,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M2  started milestone (draft PR #3, base `m1-cpu-isa`)
 - 2026-11-17  M2  Interrupts logic; Micro (41 uops) passes 2,560,000/2,560,000 Harte cases incl. exact bus traces and Isa agreement; trace runner in lake test
 - 2026-11-17  M2  T-CPU-6 (6 thms); interrupts wired in Cpu.Core (18/18 scenarios); T-REF-1 framework + 13 prefixes + 4/15 classes (160/256 opcodes); 77 theorems
+- 2026-11-17  M2  T-REF-1 CLOSED for all 256 opcodes (15 classes); proof exposed and fixed an Isa JSR bug; 90 theorems in registry
