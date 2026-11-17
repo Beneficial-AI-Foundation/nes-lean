@@ -54,3 +54,7 @@ import Nes.Cart.Proofs.MMC3
 import Nes.Bus.Dma
 import Nes.System.Proofs.Clock
 import Nes.System.Proofs.Dma
+import Nes.System.SaveState
+import Nes.System.Proofs.SaveState
+import Nes.System.Proofs.Determinism
+import Nes.System.Proofs.Interrupts
