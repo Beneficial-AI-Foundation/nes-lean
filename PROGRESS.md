@@ -22,7 +22,7 @@ when the milestone's definition of done holds.
 | M | Title | Plan phases | Branch | Base | PR | Status |
 |---|---|---|---|---|---|---|
 | M0 | Scaffold | 0 | `m0-scaffold` | `main` | #1 | ready for review |
-| M1 | nestest green | 1 | `m1-cpu-isa` | `m0-scaffold` | — | in progress |
+| M1 | nestest green | 1 | `m1-cpu-isa` | `m0-scaffold` | #2 | in progress |
 | M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | — | not started |
 | M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | — | not started |
 | M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | — | not started |
@@ -165,3 +165,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M0  4 agents: Bits lemmas, axiom check (lib TestSuite), fetch-testdata (pinned), CI workflow; build/test green
 - 2026-11-17  M0  README written; first CI run on push green (37 s)
 - 2026-11-17  M0  CI green on 7835771; definition of done holds; PR #1 marked ready
+- 2026-11-17  M1  started milestone (draft PR #2, base `m0-scaffold`)
