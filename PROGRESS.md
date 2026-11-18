@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M7
 - **Current branch:** `m7-hoare`
-- **Next action:** M7 close — CI green on the last commit, definition of done, final PR body, `gh pr ready 10`, M7 row "ready for review" → **stop the loop**.
+- **Next action:** none — all milestones M0–M7 done; the loop has stopped. Open PRs await review: #6 (M5, base `m1-cpu-isa`), #7 (M6), #10 (M7).
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -28,7 +28,7 @@ when the milestone's definition of done holds.
 | M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | #5 | merged (into `m1-cpu-isa`; to `main` via #9) |
 | M5 | Sounds right | 6 | `m5-apu` | `m4-system` | #6 | ready for review |
 | M6 | The PPU theorem | 8 | `m6-ppu-theorem` | `m5-apu` | #7 | ready for review |
-| M7 | Verified 6502 programs | 10 | `m7-hoare` | `m6-ppu-theorem` | #10 | in progress |
+| M7 | Verified 6502 programs | 10 | `m7-hoare` | `m6-ppu-theorem` | #10 | ready for review |
 
 Milestone definition of done (all milestones): `lake build` clean; `lake test` green;
 no `sorry` and no `native_decide` under `Nes/`; axiom check passes for every theorem in
@@ -135,7 +135,7 @@ Parallel tracks: Logic → Rules (sequential); then the four verified routines, 
 - [x] Rules: sequencing, consequence, branch, loop (fuel), JSR/RTS frame rule
 - [x] Verified routines: 16-bit add, `memcpy`, 8×8→16 multiply
 - [x] One routine lifted from an open-source homebrew game (`getTVSystem` timing loop, Damian Yerrick's all-permissive `paldetect.s`)
-- [ ] PR M7 ready. **Loop stops here.**
+- [x] PR M7 ready. **Loop stops here.**
 
 ## Benchmarks
 _(fill in: ISA instr/s at M1; frames/s at M4 and after the perf pass)_
@@ -294,3 +294,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-18  M7  started milestone (draft PR #10, base `m6-ppu-theorem`)
 - 2026-11-18  M7  Hoare logic (Triple/CTriple/TripleM, separation, frame) + rules (seq, conseq, branch, loop, JSR/RTS) + tactics; 274 theorems
 - 2026-11-18  M7  verified add16 (correct, footprint, 20 cycles), memcpy (incl. wrap), mul8 (a·b, loop invariant), homebrew getTVSystem loop (cycles, classification); 293 theorems; all M7 work items ticked
+- 2026-11-18  M7  CI green on f19b920; definition of done holds; PR #10 marked ready — loop stopped
