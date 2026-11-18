@@ -290,7 +290,11 @@ def registry : List Name :=
   , `Nes.Ppu.Proofs.SpriteEval.clear_phase
   , `Nes.Ppu.Proofs.T_PPU_6_bg
   , `Nes.Ppu.Proofs.line_step
-  , `Nes.Ppu.Proofs.prerender ]
+  , `Nes.Ppu.Proofs.prerender
+  , `Nes.Ppu.Proofs.T_PPU_3_ppuDot
+  , `Nes.Ppu.Proofs.T_PPU_6_fetch
+  , `Nes.Ppu.Proofs.T_PPU_6_spr
+  , `Nes.Ppu.Proofs.T_PPU_6_spr_pixel ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
