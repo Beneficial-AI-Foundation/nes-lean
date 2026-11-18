@@ -58,6 +58,18 @@
     background: var(--key-bg); color: var(--text); font: 12px/1.5 ui-monospace, monospace;
     text-align: center;
   }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  section { width: 100%; max-width: 768px; margin-top: 26px; }
+  h2 { font-size: 16px; margin: 0 0 4px; }
+  section > p { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+  .games { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .games li { background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+    padding: 10px 12px; }
+  .games a { color: var(--text); font-weight: 600; text-decoration: none; }
+  .games a:hover { text-decoration: underline; }
+  .games span { display: block; color: var(--muted); font-size: 13px; }
+  a { color: var(--text); }
   footer { width: 100%; max-width: 768px; margin-top: 22px; color: var(--muted); font-size: 13px; }
 </style>
 </head>
@@ -72,8 +84,11 @@
   <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
   <div id="overlay">
     <p id="hint">Loading the emulator…</p>
-    <button id="open" disabled>Open a .nes ROM</button>
-    <p style="font-size:13px">or drop a file here. The ROM stays in your browser.</p>
+    <div class="row">
+      <button id="demo" disabled hidden>Play nes15 (demo)</button>
+      <button id="open" disabled>Open a .nes ROM</button>
+    </div>
+    <p style="font-size:13px">or drop a file here. Your ROM stays in your browser.</p>
   </div>
 </div>
 
@@ -95,7 +110,33 @@
   <div><kbd>P</kbd> Pause <kbd>R</kbd> Reset</div>
 </div>
 
-<footer>Supported boards: NROM, CNROM, UxROM, AxROM, MMC1, MMC3. NTSC timing, 44.1 kHz audio.</footer>
+<section>
+  <h2>More free homebrew</h2>
+  <p>New NES games released for free by their authors. Download one from its official page,
+    unzip it, and open the <code>.nes</code> file here.</p>
+  <ul class="games">
+    <li><a href="https://pineight.com/nes/" rel="noopener">Thwaite</a>
+      <span>Damian Yerrick · missile defence</span></li>
+    <li><a href="https://pineight.com/nes/" rel="noopener">Concentration Room</a>
+      <span>Damian Yerrick · memory game</span></li>
+    <li><a href="https://pineight.com/nes/" rel="noopener">Russian Roulette</a>
+      <span>Damian Yerrick · party game</span></li>
+    <li><a href="https://shiru.untergrund.net/software.shtml" rel="noopener">Alter Ego</a>
+      <span>Shiru · puzzle platformer</span></li>
+    <li><a href="https://shiru.untergrund.net/software.shtml" rel="noopener">Lan Master</a>
+      <span>Shiru · logic puzzle</span></li>
+    <li><a href="https://shiru.untergrund.net/software.shtml" rel="noopener">Zooming Secretary</a>
+      <span>Shiru &amp; PinWizz · arcade</span></li>
+  </ul>
+</section>
+
+<footer>
+  <p>Supported boards: NROM, CNROM, UxROM, AxROM, MMC1, MMC3. NTSC timing, 44.1 kHz audio.
+    Games on other boards will say so when you open them.</p>
+  <p id="credits" hidden>Demo ROM: <em>nes15</em>, copyright © 2011 Mathew Brenaman, redistributed
+    under its <a href="roms/nes15-LICENSE.txt">BSD-style licence</a>. Its music is J.S. Bach's
+    BWV 558. The game is not affiliated with this project.</p>
+</footer>
 
 <script>
   const $ = (id) => document.getElementById(id);
@@ -112,6 +153,12 @@
       ready = true;
       $('hint').textContent = 'Ready. Pick a game to play.';
       $('open').disabled = false;
+      // The demo ROM is bundled only when the build had it (see web/build.sh).
+      fetch('roms/nes15.nes', { method: 'HEAD' }).then((r) => {
+        if (!r.ok) return;
+        $('demo').hidden = false; $('demo').disabled = false; $('credits').hidden = false;
+        $('open').classList.add('ghost');
+      }).catch(() => {});
     },
     onAbort(what) {
       $('hint').textContent = 'The emulator stopped: ' + what;
@@ -150,6 +197,14 @@
     setStatus(romMsg + (paused ? ' · paused' : ` · ${fps.toFixed(1)} fps`));
   }, 1000);
 
+  $('demo').onclick = () => {
+    $('demo').disabled = true;
+    fetch('roms/nes15.nes')
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+      .then((b) => loadRom(new File([b], 'nes15.nes')))
+      .catch((e) => { $('hint').textContent = 'Could not load the demo: ' + e.message; })
+      .finally(() => { $('demo').disabled = false; });
+  };
   $('open').onclick = () => fileInput.click();
   $('other').onclick = () => fileInput.click();
   fileInput.onchange = () => { loadRom(fileInput.files[0]); fileInput.value = ''; };
