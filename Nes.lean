@@ -71,3 +71,10 @@ import Nes.Apu.Mixer
 import Nes.Apu.Proofs.Mixer
 import Nes.Frontend.Wav
 import Nes.Apu.Apu
+import Nes.Ppu.Declarative
+import Nes.Ppu.Proofs.Sprite0
+import Nes.Ppu.Proofs.Shifter
+import Nes.Ppu.Proofs.Sprites
+import Nes.Ppu.Proofs.StaticFrameBg
+import Nes.Ppu.Proofs.StaticFrameSpr
+import Nes.Ppu.Proofs.StaticFrame

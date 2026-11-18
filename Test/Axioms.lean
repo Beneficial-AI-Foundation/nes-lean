@@ -274,7 +274,29 @@ def registry : List Name :=
   , `Nes.Apu.Proofs.T_APU_2_tndTable_err
   , `Nes.System.Nes.runFrameAudio_fst
   , `Nes.Ppu.Proofs.T_PPU_7_settled
-  , `Nes.Ppu.Proofs.T_PPU_7_back_to_back ]
+  , `Nes.Ppu.Proofs.T_PPU_7_back_to_back
+  , `Nes.Ppu.Proofs.T_PPU_4_hit_iff
+  , `Nes.Ppu.Proofs.T_PPU_4_dot_hit_iff
+  , `Nes.Ppu.Proofs.T_PPU_4_never_outside
+  , `Nes.Ppu.Proofs.T_PPU_4_clear
+  , `Nes.Ppu.Proofs.T_PPU_4_priority_independent
+  , `Nes.Ppu.Proofs.T_PPU_4_visible_at
+  , `Nes.Ppu.Proofs.pixel_holds
+  , `Nes.Ppu.Proofs.bg_scanline
+  , `Nes.Ppu.Proofs.bg_scanline_bgRun
+  , `Nes.Ppu.Proofs.bg_scanline_ppuDot
+  , `Nes.Ppu.Proofs.prefetch
+  , `Nes.Ppu.Proofs.T_PPU_3_eval
+  , `Nes.Ppu.Proofs.SpriteEval.clear_phase
+  , `Nes.Ppu.Proofs.T_PPU_6_bg
+  , `Nes.Ppu.Proofs.line_step
+  , `Nes.Ppu.Proofs.prerender
+  , `Nes.Ppu.Proofs.T_PPU_3_ppuDot
+  , `Nes.Ppu.Proofs.T_PPU_6_fetch
+  , `Nes.Ppu.Proofs.T_PPU_6_spr
+  , `Nes.Ppu.Proofs.T_PPU_6_spr_pixel
+  , `Nes.Ppu.Proofs.T_PPU_6
+  , `Nes.Ppu.Proofs.T_PPU_6_pixel ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
