@@ -294,7 +294,9 @@ def registry : List Name :=
   , `Nes.Ppu.Proofs.T_PPU_3_ppuDot
   , `Nes.Ppu.Proofs.T_PPU_6_fetch
   , `Nes.Ppu.Proofs.T_PPU_6_spr
-  , `Nes.Ppu.Proofs.T_PPU_6_spr_pixel ]
+  , `Nes.Ppu.Proofs.T_PPU_6_spr_pixel
+  , `Nes.Ppu.Proofs.T_PPU_6
+  , `Nes.Ppu.Proofs.T_PPU_6_pixel ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

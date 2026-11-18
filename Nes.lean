@@ -77,3 +77,4 @@ import Nes.Ppu.Proofs.Shifter
 import Nes.Ppu.Proofs.Sprites
 import Nes.Ppu.Proofs.StaticFrameBg
 import Nes.Ppu.Proofs.StaticFrameSpr
+import Nes.Ppu.Proofs.StaticFrame
