@@ -45,8 +45,25 @@ lake build nes-play
 ```
 
 Keys: arrows = D-pad, X = A, Z = B, Enter = Start, Right Shift / Tab = Select, P = pause,
-R = reset, Esc = quit. `--scale N` sets the window size (default 3×). Speed follows the
-audio clock (44 100 samples per emulated NTSC second).
+R = reset, Esc = quit. `--scale N` sets the window size (default 3×). The ROM argument is
+optional: you can also drop a `.nes` file onto the window. Frames run on the clock at
+60.0988 Hz (NTSC).
+
+### In the browser
+
+The same player compiles to WebAssembly. It needs Emscripten (`brew install emscripten`):
+
+```bash
+web/build.sh --serve
+```
+
+Then open <http://localhost:8000> and pick a ROM; it stays in the browser. The output in
+`.lake/web/site/` (`index.html`, `index.js`, `index.wasm`) is a static site, so any static
+host works, GitHub Pages included. No special server headers are needed.
+
+Lean ships no WebAssembly runtime, so the first build fetches the Lean sources for the pinned
+version and builds one. It also generates C for the `Init`/`Std` modules the emulator imports.
+Later builds reuse all of this; `web/build.sh` explains each step.
 
 ## Test
 
