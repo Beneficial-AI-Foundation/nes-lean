@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M6
 - **Current branch:** `m6-ppu-theorem`
-- **Next action:** M6: sprite half + mux of T-PPU-6 (sprite-side agent running, attempt 1) → compose with `T_PPU_6_bg` into `T_PPU_6`; then PR M6 ready.
+- **Next action:** M6: T-PPU-6 attempt 2 — line 0 sprite case + compose `T_PPU_6_bg` with `T_PPU_6_spr_pixel` into the final `T_PPU_6` (new file `Ppu/Proofs/StaticFrame.lean`).
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -126,7 +126,7 @@ Parallel tracks: {Declarative renderer → shifter invariant → background half
 - [x] Background half of T-PPU-6 (`T_PPU_6_bg`)
 - [x] T-PPU-3 sprite evaluation spec (over `evalLine`; the link to per-dot `Ppu.dot` is part of the sprite half below)
 - [x] T-PPU-4 sprite-0 hit
-- [ ] Sprite half + priority mux of T-PPU-6; `#print axioms` clean
+- [ ] Sprite half + priority mux of T-PPU-6; `#print axioms` clean — _attempt 1: `T_PPU_3_ppuDot`, `T_PPU_6_fetch`, `T_PPU_6_spr`, `T_PPU_6_spr_pixel` proved for lines 1–239; remaining (attempt 2): line 0 (pre-render dot 257 sets `sprCount := 0`, untouched until line 0's dots 1–256), wiring `run (frameStart s0 + 341·L) s0` to the sprite file's `s` at (L,0) with size invariants (secOam 32, slots 8, frame 61440), then the final `T_PPU_6` (frame byte = `Declarative.pixel` for all x<256, y<240)_
 - [ ] PR M6 ready. Create `m7-hoare`.
 
 ### M7 — Verified 6502 programs (Phase 10)
@@ -230,6 +230,7 @@ the docs, test-harness surprises.
 - 2026-11-17 [lean] `ite_eq_left_of_eq_true _ _ (eq_true h)` / `ite_eq_right_of_eq_false` replace deprecated `if_pos`/`if_neg`; `split` can't see through `have`/`let` in `fetchDot`/`evalDot` — `simp only [def]` then `repeat' split`; `decide` over `∀ d < 300` hits the recursion limit — go through `toNat` + `omega`.
 - 2026-11-18 [git] Before every push, `git fetch` and compare with the remote: the user may merge/restack PRs on GitHub between ticks; never force-push a rewritten remote branch — realign locally (`reset` to the remote + cherry-pick unpushed commits).
 - 2026-11-18 [lean] Parallel proof files in the same namespace must not share top-level names (`advance_wrap`, `run_add` clashed only at the `Nes.lean` import) — prefix helpers per file or make them `private`. macOS `sed -E` has no `\b`; use `perl -pi -e`.
+- 2026-11-18 [lean] A theorem statement containing `let r := run … 256 s` triggers a kernel "deep recursion" even when elaboration succeeds — inline the expression. `simp only [evalStep, …, State.sprTall]` produced ill-typed `Decidable` instances — `unfold …; dsimp only; split` instead.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -284,3 +285,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M6  started milestone (draft PR #7, base `m5-apu`)
 - 2026-11-17  M6  Declarative renderer (55 frames byte-exact), shifter invariant + bg scanline, T-PPU-3, T-PPU-4; 253 theorems
 - 2026-11-18  M6  background half of T-PPU-6 proved (T_PPU_6_bg); realigned local branch after the user's merges/restack of #2–#5; 256 theorems
+- 2026-11-18  M6  T-PPU-6 sprite side proved for lines 1–239 (T_PPU_3_ppuDot, fetch, spr, spr_pixel); line 0 + final composition left for attempt 2; 260 theorems
