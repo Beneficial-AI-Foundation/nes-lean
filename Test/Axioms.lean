@@ -320,7 +320,10 @@ def registry : List Name :=
   , `Nes.Hoare.Examples.hb_measure
   , `Nes.Hoare.Examples.hb_classify_ntsc
   , `Nes.Hoare.Examples.hb_classify_pal
-  , `Nes.Hoare.Examples.hb_classify_dendy ]
+  , `Nes.Hoare.Examples.hb_classify_dendy
+  , `Nes.Hoare.Examples.memcpy_correct
+  , `Nes.Hoare.Examples.memcpy_footprint
+  , `Nes.Hoare.Examples.memcpy_spec ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
