@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M6
 - **Current branch:** `m6-ppu-theorem`
-- **Next action:** M6: T-PPU-6 attempt 2 — line 0 sprite case + compose `T_PPU_6_bg` with `T_PPU_6_spr_pixel` into the final `T_PPU_6` (new file `Ppu/Proofs/StaticFrame.lean`).
+- **Next action:** M6 close — CI green on the last commit, definition of done (headline T-PPU-6 closed), final PR body, `gh pr ready 7`; then start M7 (`m7-hoare` from `m6-ppu-theorem`).
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -126,7 +126,7 @@ Parallel tracks: {Declarative renderer → shifter invariant → background half
 - [x] Background half of T-PPU-6 (`T_PPU_6_bg`)
 - [x] T-PPU-3 sprite evaluation spec (over `evalLine`; the link to per-dot `Ppu.dot` is part of the sprite half below)
 - [x] T-PPU-4 sprite-0 hit
-- [ ] Sprite half + priority mux of T-PPU-6; `#print axioms` clean — _attempt 1: `T_PPU_3_ppuDot`, `T_PPU_6_fetch`, `T_PPU_6_spr`, `T_PPU_6_spr_pixel` proved for lines 1–239; remaining (attempt 2): line 0 (pre-render dot 257 sets `sprCount := 0`, untouched until line 0's dots 1–256), wiring `run (frameStart s0 + 341·L) s0` to the sprite file's `s` at (L,0) with size invariants (secOam 32, slots 8, frame 61440), then the final `T_PPU_6` (frame byte = `Declarative.pixel` for all x<256, y<240)_
+- [x] Sprite half + priority mux of T-PPU-6; `#print axioms` clean — **`T_PPU_6`**: `(run (Ppu.dot rd pr) (frameStart s0 + 341·240) s0).frame = Declarative.frame s0 rd pr` under `StaticFull s0`; axioms: standard + `bv_decide` only
 - [ ] PR M6 ready. Create `m7-hoare`.
 
 ### M7 — Verified 6502 programs (Phase 10)
@@ -286,3 +286,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M6  Declarative renderer (55 frames byte-exact), shifter invariant + bg scanline, T-PPU-3, T-PPU-4; 253 theorems
 - 2026-11-18  M6  background half of T-PPU-6 proved (T_PPU_6_bg); realigned local branch after the user's merges/restack of #2–#5; 256 theorems
 - 2026-11-18  M6  T-PPU-6 sprite side proved for lines 1–239 (T_PPU_3_ppuDot, fetch, spr, spr_pixel); line 0 + final composition left for attempt 2; 260 theorems
+- 2026-11-18  M6  **T-PPU-6 CLOSED** (whole frame buffer = Declarative.frame for static frames); 262 theorems; all M6 items ticked
