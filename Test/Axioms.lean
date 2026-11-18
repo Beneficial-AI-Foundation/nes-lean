@@ -312,7 +312,15 @@ def registry : List Name :=
   , `Nes.Hoare.Examples.add16_correct
   , `Nes.Hoare.Examples.add16_footprint
   , `Nes.Hoare.Examples.add16_cycles
-  , `Nes.Hoare.Examples.add16_frame ]
+  , `Nes.Hoare.Examples.add16_frame
+  , `Nes.Hoare.Examples.hb_iter_cycles
+  , `Nes.Hoare.Examples.hb_loop_cycles
+  , `Nes.Hoare.Examples.hb_exit_cycles
+  , `Nes.Hoare.Examples.hb_classify_tail
+  , `Nes.Hoare.Examples.hb_measure
+  , `Nes.Hoare.Examples.hb_classify_ntsc
+  , `Nes.Hoare.Examples.hb_classify_pal
+  , `Nes.Hoare.Examples.hb_classify_dendy ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
