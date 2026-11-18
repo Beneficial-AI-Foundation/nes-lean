@@ -128,18 +128,36 @@ done < "$W/stdlib-modules.txt" | xargs -P "$JOBS" -n 1 sh -c '
 # --- 5. compile C → wasm objects (cached by timestamp) ------------------------------------
 CFLAGS="-O3 -DNDEBUG -DLEAN_EMSCRIPTEN -fwasm-exceptions -I$INC -Wno-everything"
 mkdir -p "$W/obj"
+# One "<source> <object>" line per current input; only these objects are linked, so objects
+# left over from deleted modules (or restored from a CI cache) never are.
 {
   while read -r m; do echo "$W/stdc/${m//./\/}.c"; done < "$W/stdlib-modules.txt"
   find "$IR/Nes" "$IR/Play" -name '*.c'; echo "$IR/Nes.c"
 } | while read -r c; do
-  o="$W/obj/$(echo "${c#"$ROOT"/}" | tr / _ | sed "s/^\\.//").o"
-  [ "$o" -nt "$c" ] || echo "$c $o"
-done | xargs -P "$JOBS" -n 2 sh -c 'emcc '"$CFLAGS"' -c "$0" -o "$1"'
+  echo "$c $W/obj/$(echo "${c#"$ROOT"/}" | tr / _ | sed "s/^\\.//").o"
+done > "$W/objects.txt"
+while read -r c o; do [ "$o" -nt "$c" ] || echo "$c $o"; done < "$W/objects.txt" \
+  | xargs -P "$JOBS" -n 2 sh -c 'emcc '"$CFLAGS"' -c "$0" -o "$1"'
+cut -d' ' -f2 "$W/objects.txt" > "$W/link.rsp"
 
-# --- 6. link ------------------------------------------------------------------------------
+# --- 6. bundled demo ROM ------------------------------------------------------------------
+# nes15 by Mathew Brenaman (BSD-style licence: redistribution allowed with the notice, which
+# ships next to it and is credited on the page). It comes from the test data
+# (scripts/fetch-testdata.sh), never from git. Without it the page only offers "open a ROM".
+NES15=$ROOT/testdata/nes-test-roms/nes15-1.0.0
+mkdir -p "$SITE/roms"
+if [ -f "$NES15/nes15-NTSC.nes" ]; then
+  cp "$NES15/nes15-NTSC.nes" "$SITE/roms/nes15.nes"
+  cp "$NES15/LICENSE" "$SITE/roms/nes15-LICENSE.txt"
+else
+  echo "== note: $NES15 missing (run scripts/fetch-testdata.sh --cpu-only); no demo ROM bundled"
+  rm -f "$SITE/roms/nes15.nes" "$SITE/roms/nes15-LICENSE.txt"
+fi
+
+# --- 7. link ------------------------------------------------------------------------------
 echo "== linking"
 emcc $CFLAGS -Werror=implicit-function-declaration -sUSE_SDL=3 -c "$ROOT/Play/app.c" -o "$W/app.o"
-em++ -O3 -fwasm-exceptions -sUSE_SDL=3 "$W"/obj/*.o "$W/app.o" "$W/rt/libleanrt.a" "$W/rt/libuv.a" \
+em++ -O3 -fwasm-exceptions -sUSE_SDL=3 @"$W/link.rsp" "$W/app.o" "$W/rt/libleanrt.a" "$W/rt/libuv.a" \
   -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8MB -sFORCE_FILESYSTEM=1 ${WEB_LINK_FLAGS:-} \
   -sEXPORTED_RUNTIME_METHODS=FS,ccall,UTF8ToString \
   --shell-file "$ROOT/web/shell.html" -o "$SITE/index.html" 2>&1 \

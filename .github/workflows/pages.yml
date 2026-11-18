@@ -1,0 +1,84 @@
+name: Pages
+
+# Builds the browser player (web/build.sh) and deploys it to GitHub Pages from `main`.
+# Pull requests build it too (no deploy), so a broken web build shows up before merging.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build web player
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # nes-test-roms only (no SingleStepTests): the source of the bundled nes15 demo ROM.
+      - name: Cache test ROMs
+        uses: actions/cache@v4
+        with:
+          path: testdata/nes-test-roms
+          key: nes-test-roms-${{ hashFiles('scripts/fetch-testdata.sh') }}
+      - name: Fetch test ROMs
+        run: bash scripts/fetch-testdata.sh --cpu-only
+
+      # elan + the pinned toolchain; `lake build PlayCore` writes the C for Nes and Play.Core.
+      - name: Lean build (PlayCore)
+        uses: leanprover/lean-action@v1.7.1
+        with:
+          auto-config: false
+          build: true
+          build-args: PlayCore
+          test: false
+          use-github-cache: true
+
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v16
+        with:
+          version: 7.0.0
+          actions-cache-folder: emsdk-cache
+
+      # The wasm runtime, the Init/Std C and their objects are reusable across runs; keyed on
+      # everything that shapes them.
+      - name: Cache web build
+        uses: actions/cache@v4
+        with:
+          path: |
+            .lake/web/lean4
+            .lake/web/libuv
+            .lake/web/rt
+            .lake/web/stdc
+            .lake/web/obj
+          key: web-${{ hashFiles('lean-toolchain', 'web/build.sh') }}-emsdk-7.0.0
+
+      - name: Build web player
+        run: web/build.sh
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: .lake/web/site
+
+  deploy:
+    name: deploy to GitHub Pages
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5.0.1

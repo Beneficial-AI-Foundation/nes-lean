@@ -58,8 +58,14 @@ web/build.sh --serve
 ```
 
 Then open <http://localhost:8000> and pick a ROM; it stays in the browser. The output in
-`.lake/web/site/` (`index.html`, `index.js`, `index.wasm`) is a static site, so any static
-host works, GitHub Pages included. No special server headers are needed.
+`.lake/web/site/` is a static site that needs no special server headers.
+`.github/workflows/pages.yml` builds it on every PR and deploys it to GitHub Pages from
+`main`.
+
+The page has one built-in demo, nes15 by Mathew Brenaman, which its BSD-style licence lets
+us redistribute; the licence ships next to it. The ROM is copied from the fetched test data
+and never committed to git. Other games are linked to their authors' official download
+pages rather than hosted.
 
 Lean ships no WebAssembly runtime, so the first build fetches the Lean sources for the pinned
 version and builds one. It also generates C for the `Init`/`Std` modules the emulator imports.
