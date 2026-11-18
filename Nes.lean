@@ -58,3 +58,16 @@ import Nes.System.SaveState
 import Nes.System.Proofs.SaveState
 import Nes.System.Proofs.Determinism
 import Nes.System.Proofs.Interrupts
+import Nes.Apu.Dmc
+import Nes.Apu.Proofs.Dmc
+import Nes.Apu.FrameCounter
+import Nes.Apu.Proofs.FrameCounter
+import Nes.Apu.Units
+import Nes.Apu.Pulse
+import Nes.Apu.Triangle
+import Nes.Apu.Noise
+import Nes.Apu.Proofs.Units
+import Nes.Apu.Mixer
+import Nes.Apu.Proofs.Mixer
+import Nes.Frontend.Wav
+import Nes.Apu.Apu

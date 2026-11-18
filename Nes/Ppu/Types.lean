@@ -120,6 +120,11 @@ structure State where
   odd-frame skip at dot 339 decides from it, so a `$2001` write after dot 338 no longer
   affects this frame's skip (`ppu_vbl_nmi/10-even_odd_timing`, exact to the dot). -/
   renderLatch : Bool
+  /-- `readBuffer` as it was before the last `$2007` read refilled it: the value a `$2007` read
+  on the very next CPU cycle still sees (the refill has not landed yet, `Data.read2007At`). -/
+  prevBuffer : UInt8
+  /-- CPU cycle (`Nes.clkCpu`) of the last `$2007` read. -/
+  lastRead2007 : UInt64
 
 namespace State
 
@@ -134,7 +139,7 @@ def init : State :=
     spr0Next := false, spr0Line := false, dot := 0, scanline := 0, frameOdd := false,
     nmiOut := false, suppressVbl := false, a12 := false,
     frame := zeroBytes (frameWidth * frameHeight), emphasis := 0, frameReady := false,
-    renderLatch := false }
+    renderLatch := false, prevBuffer := 0, lastRead2007 := 0 }
 
 instance : Inhabited State := ⟨init⟩
 

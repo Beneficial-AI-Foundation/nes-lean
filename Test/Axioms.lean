@@ -243,7 +243,38 @@ def registry : List Name :=
   , `Nes.System.Proofs.T_SYS_4_dots
   , `Nes.System.Proofs.T_SYS_4_cpu_projection
   , `Nes.System.Proofs.T_SYS_4_cpu_projection_mem
-  , `Nes.System.Proofs.T_SYS_4_nmi ]
+  , `Nes.System.Proofs.T_SYS_4_nmi
+  , `Nes.Apu.Proofs.T_APU_3_wrap
+  , `Nes.Apu.Proofs.T_APU_3_length
+  , `Nes.Apu.Proofs.T_APU_3_loop
+  , `Nes.Apu.Proofs.T_APU_3_irq
+  , `Nes.Apu.Proofs.T_APU_3_stall
+  , `Nes.Apu.Proofs.dmc_output_bounds
+  , `Nes.Apu.Proofs.T_APU_1_four_step
+  , `Nes.Apu.Proofs.T_APU_1_five_step
+  , `Nes.Apu.Proofs.T_APU_1_irq
+  , `Nes.Apu.Proofs.T_APU_1_immediate
+  , `Nes.Apu.Proofs.lengthTable_values
+  , `Nes.Apu.Proofs.length_halt
+  , `Nes.Apu.Proofs.envelope_decay
+  , `Nes.Apu.Proofs.sweep_mute
+  , `Nes.Apu.Proofs.pulse1_negate_ones_complement
+  , `Nes.Apu.Proofs.pulse2_negate_twos_complement
+  , `Nes.Apu.Proofs.noise_lfsr_period
+  , `Nes.Apu.Proofs.T_APU_2_mono_p1
+  , `Nes.Apu.Proofs.T_APU_2_mono_p2
+  , `Nes.Apu.Proofs.T_APU_2_mono_t
+  , `Nes.Apu.Proofs.T_APU_2_mono_n
+  , `Nes.Apu.Proofs.T_APU_2_mono_d
+  , `Nes.Apu.Proofs.T_APU_2_max
+  , `Nes.Apu.Proofs.T_APU_2_bounds
+  , `Nes.Apu.Proofs.T_APU_2_pulseTable
+  , `Nes.Apu.Proofs.T_APU_2_tndTable
+  , `Nes.Apu.Proofs.T_APU_2_pulseTable_err
+  , `Nes.Apu.Proofs.T_APU_2_tndTable_err
+  , `Nes.System.Nes.runFrameAudio_fst
+  , `Nes.Ppu.Proofs.T_PPU_7_settled
+  , `Nes.Ppu.Proofs.T_PPU_7_back_to_back ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

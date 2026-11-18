@@ -250,16 +250,18 @@ instance : Codec Ppu.State :=
       s.oam, s.secOam, s.bgPatLo, s.bgPatHi, s.bgAttrLo, s.bgAttrHi, s.bgNextTile, s.bgNextAttr,
       s.bgNextLo, s.bgNextHi, s.evalN, s.evalM, s.evalSec, s.evalLatch, s.sprCount, s.sprPatLo,
       s.sprPatHi, s.sprAttr, s.sprX, s.spr0Next, s.spr0Line, s.dot, s.scanline, s.frameOdd,
-      s.nmiOut, s.suppressVbl, s.a12, s.frame, s.emphasis, s.frameReady, s.renderLatch))
+      s.nmiOut, s.suppressVbl, s.a12, s.frame, s.emphasis, s.frameReady, s.renderLatch,
+      s.prevBuffer, s.lastRead2007))
     (fun (ctrl, mask, status, oamAddr, v, t, x, w, readBuffer, ioLatch, oam, secOam, bgPatLo,
         bgPatHi, bgAttrLo, bgAttrHi, bgNextTile, bgNextAttr, bgNextLo, bgNextHi, evalN, evalM,
         evalSec, evalLatch, sprCount, sprPatLo, sprPatHi, sprAttr, sprX, spr0Next, spr0Line, dot,
         scanline, frameOdd, nmiOut, suppressVbl, a12, frame, emphasis, frameReady,
-        renderLatch) =>
+        renderLatch, prevBuffer, lastRead2007) =>
       ⟨ctrl, mask, status, oamAddr, v, t, x, w, readBuffer, ioLatch, oam, secOam, bgPatLo,
         bgPatHi, bgAttrLo, bgAttrHi, bgNextTile, bgNextAttr, bgNextLo, bgNextHi, evalN, evalM,
         evalSec, evalLatch, sprCount, sprPatLo, sprPatHi, sprAttr, sprX, spr0Next, spr0Line, dot,
-        scanline, frameOdd, nmiOut, suppressVbl, a12, frame, emphasis, frameReady, renderLatch⟩)
+        scanline, frameOdd, nmiOut, suppressVbl, a12, frame, emphasis, frameReady, renderLatch,
+        prevBuffer, lastRead2007⟩)
     (fun _ => rfl)
 
 /-! ### Cartridge -/
@@ -332,25 +334,80 @@ instance : Codec Bus.OamDma :=
   Codec.map (fun s => (s.page, s.left, s.latch)) (fun (page, left, latch) => ⟨page, left, latch⟩)
     (fun _ => rfl)
 
+/-! ### APU -/
+
+instance : Codec Apu.FrameCounter :=
+  Codec.map (fun s => (s.cycle, s.resetIn, s.mode5, s.inhibit, s.irq))
+    (fun (cycle, resetIn, mode5, inhibit, irq) => ⟨cycle, resetIn, mode5, inhibit, irq⟩)
+    (fun _ => rfl)
+
+instance : Codec Apu.Length :=
+  Codec.map (fun s => (s.counter, s.halt)) (fun (counter, halt) => ⟨counter, halt⟩) (fun _ => rfl)
+
+instance : Codec Apu.Envelope :=
+  Codec.map (fun s => (s.start, s.loop, s.constVol, s.volume, s.divider, s.decay))
+    (fun (start, loop, constVol, volume, divider, decay) =>
+      ⟨start, loop, constVol, volume, divider, decay⟩) (fun _ => rfl)
+
+instance : Codec Apu.Sweep :=
+  Codec.map (fun s => (s.enabled, s.divPeriod, s.negate, s.shift, s.reload, s.divider))
+    (fun (enabled, divPeriod, negate, shift, reload, divider) =>
+      ⟨enabled, divPeriod, negate, shift, reload, divider⟩) (fun _ => rfl)
+
+instance : Codec Apu.Pulse :=
+  Codec.map (fun s => (s.duty, s.seq, s.timer, s.period, s.len, s.env, s.sweep, s.enabled, s.ones))
+    (fun (duty, seq, timer, period, len, env, sweep, enabled, ones) =>
+      ⟨duty, seq, timer, period, len, env, sweep, enabled, ones⟩) (fun _ => rfl)
+
+instance : Codec Apu.Triangle :=
+  Codec.map (fun s => (s.timer, s.period, s.seq, s.len, s.linear, s.linReload, s.linReloadFlag,
+      s.control, s.enabled))
+    (fun (timer, period, seq, len, linear, linReload, linReloadFlag, control, enabled) =>
+      ⟨timer, period, seq, len, linear, linReload, linReloadFlag, control, enabled⟩)
+    (fun _ => rfl)
+
+instance : Codec Apu.Noise :=
+  Codec.map (fun s => (s.timer, s.reload, s.mode, s.lfsr, s.len, s.env, s.enabled))
+    (fun (timer, reload, mode, lfsr, len, env, enabled) =>
+      ⟨timer, reload, mode, lfsr, len, env, enabled⟩) (fun _ => rfl)
+
+instance : Codec Apu.Dmc :=
+  Codec.map (fun s => (s.irqEnable, s.loop, s.period, s.timer, s.level, s.addrReg, s.lenReg,
+      s.curAddr, s.bytesRemaining, s.buffer, s.bufferEmpty, s.shift, s.bitsRemaining, s.silence,
+      s.irqFlag))
+    (fun (irqEnable, loop, period, timer, level, addrReg, lenReg, curAddr, bytesRemaining,
+        buffer, bufferEmpty, shift, bitsRemaining, silence, irqFlag) =>
+      ⟨irqEnable, loop, period, timer, level, addrReg, lenReg, curAddr, bytesRemaining, buffer,
+        bufferEmpty, shift, bitsRemaining, silence, irqFlag⟩)
+    (fun _ => rfl)
+
+instance : Codec Apu.Apu :=
+  Codec.map (fun s => (s.fc, s.p1, s.p2, s.tri, s.noise, s.dmc, s.odd, s.haltMask, s.haltVal,
+      s.loadMask, s.loadVal))
+    (fun (fc, p1, p2, tri, noise, dmc, odd, haltMask, haltVal, loadMask, loadVal) =>
+      ⟨fc, p1, p2, tri, noise, dmc, odd, haltMask, haltVal, loadMask, loadVal⟩) (fun _ => rfl)
+
 /-! ### The machine -/
 
 /-- Everything mutable in a `Nes`, as a tuple (the cartridge's image is left out). -/
 abbrev Image :=
   Cpu.Core × Ppu.State × Cart.CartState × { b : ByteArray // b.size = 2048 } ×
     { b : ByteArray // b.size = 2048 } × { b : ByteArray // b.size = 32 } × Input.State ×
-    Bus.OpenBus × UInt64 × UInt64 × UInt64 × Bool × UInt64 × Bus.OamDma × Bool
+    Bus.OpenBus × UInt64 × UInt64 × UInt64 × Bool × UInt64 × Bus.OamDma × Bool × Apu.Apu ×
+    UInt8 × Bool
 
 /-- The mutable fields of `n`. -/
 def toImage (n : Nes) : Image :=
   (n.cpu, n.ppu, n.cart.st, ⟨n.ram, n.ram_size⟩, ⟨n.ciram, n.ciram_size⟩, ⟨n.pal, n.pal_size⟩,
-    n.pads, n.bus, n.clkCpu, n.clkPpu, n.clkApu, n.clkOdd, n.frame, n.dma, n.resetLine)
+    n.pads, n.bus, n.clkCpu, n.clkPpu, n.clkApu, n.clkOdd, n.frame, n.dma, n.resetLine,
+    n.apu, n.dmcLeft, n.dmcAlign)
 
 /-- Rebuild a machine from its mutable fields and the cartridge image. -/
 def ofImage (rom : Cart.Rom) : Image → Nes
   | (cpu, ppu, st, ram, ciram, pal, pads, bus, clkCpu, clkPpu, clkApu, clkOdd, frame, dma,
-      resetLine) =>
+      resetLine, apu, dmcLeft, dmcAlign) =>
     ⟨cpu, ppu, ⟨rom, st⟩, ram.val, ciram.val, pal.val, pads, bus, clkCpu, clkPpu, clkApu, clkOdd,
-      frame, dma, resetLine, ram.property, ciram.property, pal.property⟩
+      frame, dma, resetLine, apu, dmcLeft, dmcAlign, ram.property, ciram.property, pal.property⟩
 
 theorem ofImage_toImage (n : Nes) : ofImage n.cart.rom (toImage n) = n := rfl
 
@@ -358,7 +415,7 @@ theorem ofImage_toImage (n : Nes) : ofImage n.cart.rom (toImage n) = n := rfl
 def magic : List UInt8 := [0x4E, 0x45, 0x53, 0x53]
 
 /-- Format version (bump when a field is added to the machine). -/
-def version : UInt8 := 1
+def version : UInt8 := 3
 
 /-- The header: magic and version. -/
 def header : List UInt8 := magic ++ [version]

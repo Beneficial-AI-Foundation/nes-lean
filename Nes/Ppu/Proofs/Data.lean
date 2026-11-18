@@ -19,6 +19,13 @@ read, `s : State`, and `a = s.v &&& 0x3FFF` (`s.vramAddr`).
 * **T-PPU-7 (two reads).** If `a < $3F00` and the incremented address is also below `$3F00`,
   two consecutive reads return `[s.readBuffer, rd a]`: first the stale buffer, then the byte
   at `a` (`T_PPU_7_two_reads`).
+* **T-PPU-7 (settled).** The bus-level read `read2007At now` (which models the refill landing
+  after the next CPU cycle) agrees with `read2007` whenever the previous `$2007` read was not on
+  the CPU cycle just before `now`, or the address is a palette address: same returned byte,
+  same state apart from the bookkeeping fields `prevBuffer`/`lastRead2007`
+  (`T_PPU_7_settled`); so the four statements above hold for every settled read. A read on the
+  next CPU cycle returns `prevBuffer` and still refills/increments as `read2007`
+  (`T_PPU_7_back_to_back`).
 
 Method: unfold and `simp`; no case enumeration.
 -/
@@ -64,5 +71,24 @@ theorem T_PPU_7_two_reads (rd : UInt16 → UInt8) (palRd : UInt8 → UInt8) (s :
       ).vramAddr < 0x3F00 := h₂
   simp only [read2007, h₂', ite_true]
   rfl
+
+theorem T_PPU_7_settled (now : UInt64) (rd : UInt16 → UInt8) (palRd : UInt8 → UInt8)
+    (s : State) (h : ¬(now = s.lastRead2007 + 1 ∧ s.vramAddr < 0x3F00)) :
+    read2007At now rd palRd s =
+      ({ (read2007 rd palRd s).1 with prevBuffer := s.readBuffer, lastRead2007 := now },
+        (read2007 rd palRd s).2) := by
+  unfold read2007At
+  have : (now == s.lastRead2007 + 1 && decide (s.vramAddr < 0x3F00)) = false := by
+    simpa [Bool.and_eq_true, beq_iff_eq] using h
+  simp only [this]
+  rfl
+
+theorem T_PPU_7_back_to_back (now : UInt64) (rd : UInt16 → UInt8) (palRd : UInt8 → UInt8)
+    (s : State) (h₁ : now = s.lastRead2007 + 1) (h₂ : s.vramAddr < 0x3F00) :
+    (read2007At now rd palRd s).2 = s.prevBuffer ∧
+    (read2007At now rd palRd s).1.readBuffer = (read2007 rd palRd s).1.readBuffer ∧
+    (read2007At now rd palRd s).1.v = (read2007 rd palRd s).1.v := by
+  unfold read2007At
+  simp [h₁, h₂]
 
 end Nes.Ppu.Proofs
