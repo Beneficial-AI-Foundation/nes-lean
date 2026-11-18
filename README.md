@@ -28,7 +28,25 @@ This builds the `Nes` library and the `nes` executable (compiled with `-O3`) at
 .lake/build/bin/nes
 ```
 
-The headless CLI (run a ROM for N frames, write PNG/PPM and frame hashes) arrives in M3.
+`nes run <rom.nes>` runs a ROM headless (PNG/PPM frames, frame hashes, WAV audio, scripted
+input); `nes --help` lists the options.
+
+## Play (live window, keyboard, sound)
+
+`nes-play` opens a window, plays the sound, and reads the keyboard as controller 1. It needs
+SDL3 (`brew install sdl3`, or `libsdl3-dev`), so it is not built by plain `lake build`:
+
+```bash
+lake build nes-play
+```
+
+```bash
+.lake/build/bin/nes-play testdata/nes-test-roms/nes15-1.0.0/nes15-NTSC.nes
+```
+
+Keys: arrows = D-pad, X = A, Z = B, Enter = Start, Right Shift / Tab = Select, P = pause,
+R = reset, Esc = quit. `--scale N` sets the window size (default 3×). Speed follows the
+audio clock (44 100 samples per emulated NTSC second).
 
 ## Test
 
