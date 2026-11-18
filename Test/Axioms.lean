@@ -323,7 +323,11 @@ def registry : List Name :=
   , `Nes.Hoare.Examples.hb_classify_dendy
   , `Nes.Hoare.Examples.memcpy_correct
   , `Nes.Hoare.Examples.memcpy_footprint
-  , `Nes.Hoare.Examples.memcpy_spec ]
+  , `Nes.Hoare.Examples.memcpy_spec
+  , `Nes.Hoare.Examples.mul8_correct
+  , `Nes.Hoare.Examples.mul8_footprint
+  , `Nes.Hoare.Examples.mul8_spec
+  , `Nes.Hoare.Examples.mul8_loop ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

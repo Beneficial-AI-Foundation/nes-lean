@@ -84,3 +84,4 @@ import Nes.Hoare.Tactics
 import Nes.Hoare.Examples.Add16
 import Nes.Hoare.Examples.Homebrew
 import Nes.Hoare.Examples.Memcpy
+import Nes.Hoare.Examples.Mul8
