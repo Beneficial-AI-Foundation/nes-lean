@@ -27,7 +27,7 @@ when the milestone's definition of done holds.
 | M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | #4 | merged (into `m1-cpu-isa`; to `main` via #9) |
 | M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | #5 | merged (into `m1-cpu-isa`; to `main` via #9) |
 | M5 | Sounds right | 6 | `m5-apu` | `m4-system` | #6 | ready for review |
-| M6 | The PPU theorem | 8 | `m6-ppu-theorem` | `m5-apu` | #7 | in progress |
+| M6 | The PPU theorem | 8 | `m6-ppu-theorem` | `m5-apu` | #7 | ready for review |
 | M7 | Verified 6502 programs | 10 | `m7-hoare` | `m6-ppu-theorem` | — | not started |
 
 Milestone definition of done (all milestones): `lake build` clean; `lake test` green;
@@ -127,7 +127,7 @@ Parallel tracks: {Declarative renderer → shifter invariant → background half
 - [x] T-PPU-3 sprite evaluation spec (over `evalLine`; the link to per-dot `Ppu.dot` is part of the sprite half below)
 - [x] T-PPU-4 sprite-0 hit
 - [x] Sprite half + priority mux of T-PPU-6; `#print axioms` clean — **`T_PPU_6`**: `(run (Ppu.dot rd pr) (frameStart s0 + 341·240) s0).frame = Declarative.frame s0 rd pr` under `StaticFull s0`; axioms: standard + `bv_decide` only
-- [ ] PR M6 ready. Create `m7-hoare`.
+- [x] PR M6 ready. Create `m7-hoare`.
 
 ### M7 — Verified 6502 programs (Phase 10)
 Parallel tracks: Logic → Rules (sequential); then the four verified routines, one agent each.
@@ -287,3 +287,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-18  M6  background half of T-PPU-6 proved (T_PPU_6_bg); realigned local branch after the user's merges/restack of #2–#5; 256 theorems
 - 2026-11-18  M6  T-PPU-6 sprite side proved for lines 1–239 (T_PPU_3_ppuDot, fetch, spr, spr_pixel); line 0 + final composition left for attempt 2; 260 theorems
 - 2026-11-18  M6  **T-PPU-6 CLOSED** (whole frame buffer = Declarative.frame for static frames); 262 theorems; all M6 items ticked
+- 2026-11-18  M6  CI green on 271b523; definition of done holds (T-PPU-6 closed); PR #7 marked ready
