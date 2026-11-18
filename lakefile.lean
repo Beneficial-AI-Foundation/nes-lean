@@ -34,16 +34,23 @@ def sdl3Flags (flag : String) : IO (Array String) := do
       let s := s.toString; if s.isEmpty then none else some s) |>.toArray
   catch _ => return #[]
 
-target sdlShim.o pkg : FilePath := do
-  let src ← inputTextFile <| pkg.dir / "Play" / "sdl_shim.c"
+/-- The emulator session the players drive (exported to C); no `main`, so the browser build
+can link it under its own entry point. -/
+lean_lib PlayCore where roots := #[`Play.Core]
+
+target playNative.o pkg : FilePath := do
+  let src ← inputTextFile <| pkg.dir / "Play" / "native.c"
+  -- native.c #includes app.c: track it too
+  let app ← inputTextFile <| pkg.dir / "Play" / "app.c"
   let weakArgs := #["-I", (← getLeanIncludeDir).toString] ++ (← sdl3Flags "--cflags")
-  buildO (pkg.buildDir / "c" / "sdl_shim.o") src weakArgs #["-O2", "-fPIC"]
+  buildO (pkg.buildDir / "c" / "play_native.o") src weakArgs #["-O2", "-fPIC"]
+    (extraDepTrace := do let _ ← app.await; return (← getTrace))
 
 lean_exe «nes-play» where
   root := `Play
   moreLeancArgs := #["-O3", "-DNDEBUG"]
-  moreLinkObjs := #[sdlShim.o]
-  -- macOS: the shim's entry point keeps the main thread for Cocoa (see Play/sdl_shim.c).
+  moreLinkObjs := #[playNative.o]
+  -- macOS: the shim's entry point keeps the main thread for Cocoa (see Play/native.c).
   moreLinkArgs := run_io do
     let darwin := System.Platform.isOSX
     return (← sdl3Flags "--libs") ++ (if darwin then #["-Wl,-e,_nes_play_entry"] else #[])
