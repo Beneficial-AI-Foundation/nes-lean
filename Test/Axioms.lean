@@ -296,7 +296,19 @@ def registry : List Name :=
   , `Nes.Ppu.Proofs.T_PPU_6_spr
   , `Nes.Ppu.Proofs.T_PPU_6_spr_pixel
   , `Nes.Ppu.Proofs.T_PPU_6
-  , `Nes.Ppu.Proofs.T_PPU_6_pixel ]
+  , `Nes.Ppu.Proofs.T_PPU_6_pixel
+  , `Nes.Hoare.Triple.seq
+  , `Nes.Hoare.Triple.conseq
+  , `Nes.Hoare.Triple.frame
+  , `Nes.Hoare.Triple.branch
+  , `Nes.Hoare.Triple.loop
+  , `Nes.Hoare.Triple.loop_branch
+  , `Nes.Hoare.Triple.call
+  , `Nes.Hoare.Triple.call_frame
+  , `Nes.Hoare.Triple.wp_step
+  , `Nes.Hoare.Triple.sound
+  , `Nes.Hoare.ex_lda_sta
+  , `Nes.Hoare.ex_countdown ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

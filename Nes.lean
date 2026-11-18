@@ -78,3 +78,6 @@ import Nes.Ppu.Proofs.Sprites
 import Nes.Ppu.Proofs.StaticFrameBg
 import Nes.Ppu.Proofs.StaticFrameSpr
 import Nes.Ppu.Proofs.StaticFrame
+import Nes.Hoare.Logic
+import Nes.Hoare.Rules
+import Nes.Hoare.Tactics
