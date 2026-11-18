@@ -81,3 +81,4 @@ import Nes.Ppu.Proofs.StaticFrame
 import Nes.Hoare.Logic
 import Nes.Hoare.Rules
 import Nes.Hoare.Tactics
+import Nes.Hoare.Examples.Add16
