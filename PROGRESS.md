@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M6
 - **Current branch:** `m6-ppu-theorem`
-- **Next action:** M6: background half of T-PPU-6 (compose `prefetch` + `bg_scanline_ppuDot` over 240 lines with the vertical scroll increments, against `Declarative.bgPixel`) ∥ sprite-side groundwork: frame lemmas that `bgDot`/`pixel` leave the sprite-eval fields alone so `T_PPU_3_eval` applies to `Ppu.dot`, and sprite fetch 257–320 = the slots `Declarative.spritePixel` reads.
+- **Next action:** M6: sprite half + mux of T-PPU-6 (sprite-side agent running, attempt 1) → compose with `T_PPU_6_bg` into `T_PPU_6`; then PR M6 ready.
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -22,10 +22,10 @@ when the milestone's definition of done holds.
 | M | Title | Plan phases | Branch | Base | PR | Status |
 |---|---|---|---|---|---|---|
 | M0 | Scaffold | 0 | `m0-scaffold` | `main` | #1 | merged |
-| M1 | nestest green | 1 | `m1-cpu-isa` | `main` | #2 | ready for review |
-| M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | #3 | ready for review |
-| M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | #4 | ready for review |
-| M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | #5 | ready for review |
+| M1 | nestest green | 1 | `m1-cpu-isa` | `main` | #2 | merged |
+| M2 | Cycle-exact and proved | 2 | `m2-cpu-micro` | `m1-cpu-isa` | #3 | merged (into `m1-cpu-isa`; to `main` via #9) |
+| M3 | First frame | 3, 4 | `m3-ppu` | `m2-cpu-micro` | #4 | merged (into `m1-cpu-isa`; to `main` via #9) |
+| M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | #5 | merged (into `m1-cpu-isa`; to `main` via #9) |
 | M5 | Sounds right | 6 | `m5-apu` | `m4-system` | #6 | ready for review |
 | M6 | The PPU theorem | 8 | `m6-ppu-theorem` | `m5-apu` | #7 | in progress |
 | M7 | Verified 6502 programs | 10 | `m7-hoare` | `m6-ppu-theorem` | — | not started |
@@ -123,7 +123,7 @@ Parallel tracks: {FrameCounter + T-APU-1 + DMC DMA wiring} ∥ {pulse/triangle/n
 Parallel tracks: {Declarative renderer → shifter invariant → background half} ∥ {T-PPU-3} ∥ {T-PPU-4}; then sprite half + mux (needs all three).
 - [x] `Ppu/Declarative.lean` reference renderer (55 static frames match the pipeline byte-for-byte; in `lake test`)
 - [x] Shifter invariant lemma (shifter contents = pattern bits of tile at `v` + 2) — incl. `bg_scanline_ppuDot` (one scanline of `bgPixelRaw` over the real `Ppu.dot`) and `prefetch`
-- [ ] Background half of T-PPU-6
+- [x] Background half of T-PPU-6 (`T_PPU_6_bg`)
 - [x] T-PPU-3 sprite evaluation spec (over `evalLine`; the link to per-dot `Ppu.dot` is part of the sprite half below)
 - [x] T-PPU-4 sprite-0 hit
 - [ ] Sprite half + priority mux of T-PPU-6; `#print axioms` clean
@@ -228,6 +228,8 @@ the docs, test-harness surprises.
 - 2026-11-17 [ppu] Declarative renderer: static frame from a snapshot in vblank (lines 241–260); vertical scroll `Y0 = 8·coarseY + fineY`: if `Y0 < 240` row `(Y0+y) % 240` with nametable flip on wrap, if `Y0 ≥ 240` (coarse Y 30/31) row `(Y0+y) % 256` with no flip; horizontal `(X0+x) % 256` with flip past 256. Sprites on line y come from `evalSpec oam (y−1) h`; none on line 0. Needs `oamAddr = 0` at evaluation and `rd`/`palRd` constant (no CHR bank switches).
 - 2026-11-17 [proofs] Shifter invariant: `Holds s A B j` (shifters = `(A‖B) <<< j`), `PInv` per dot with `v = incX (incX u)` (+1 incX after phase 7 except dot 256); `Start` at dot 0, scanline theorem counts dots 1..n; odd-frame skip jumps 339 → 0 — pass idle dots with `Ready.idle`. T-PPU-3 via an abstract Nat machine `Ev` + `Rel`, invariant `Inv1 ∨ Inv2`, measure `(64−n)+(32−sec)` = 96 = latch/act pairs on dots 65–256.
 - 2026-11-17 [lean] `ite_eq_left_of_eq_true _ _ (eq_true h)` / `ite_eq_right_of_eq_false` replace deprecated `if_pos`/`if_neg`; `split` can't see through `have`/`let` in `fetchDot`/`evalDot` — `simp only [def]` then `repeat' split`; `decide` over `∀ d < 300` hits the recursion limit — go through `toNat` + `omega`.
+- 2026-11-18 [git] Before every push, `git fetch` and compare with the remote: the user may merge/restack PRs on GitHub between ticks; never force-push a rewritten remote branch — realign locally (`reset` to the remote + cherry-pick unpushed commits).
+- 2026-11-18 [lean] Parallel proof files in the same namespace must not share top-level names (`advance_wrap`, `run_add` clashed only at the `Nes.lean` import) — prefix helpers per file or make them `private`. macOS `sed -E` has no `\b`; use `perl -pi -e`.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -241,6 +243,7 @@ the docs, test-harness surprises.
 - 2026-11-17 PPU loopy `v`/`t` are `UInt16` (and `x`, `dot`, `scanline` UInt) with `BitVec` field views for proofs, instead of `BitVec 15` storage (Nat-backed, boxed at runtime); OAM, secondary OAM and the frame buffer are `ByteArray` (unboxed) rather than `Vector UInt8` (8 B/byte boxed) — a refinement of PLAN §10.4 for large byte buffers. ROM PRG/CHR are `ByteArray` with `Fin size` bank offsets. Emphasis is one byte per frame, not per pixel.
 - 2026-11-17 System RAM/CIRAM/palette and PPU buffers use `ByteArray` with size invariants rather than `Vector UInt8 n` (PLAN §10.4) — unboxed bytes for speed, still `Fin`-indexed and total. The `Nes` structure is `Nes.System.Nes`.
 - 2026-11-17 CNROM mapper pulled forward from M4 into M3: blargg `ppu_read_buffer` (an M3 acceptance ROM) is a CNROM cart.
+- 2026-11-18 PRs #2–#5 were merged by the user (#3–#5 into `m1-cpu-isa`, then onto `main` via #9 `fix/m2-m4-onto-main`), and the remote `m5-apu`/`m6-ppu-theorem` were rewritten (same trees, new SHAs). The loop realigned its local `m6-ppu-theorem` to the remote and re-applied its one unpushed commit (old local tip kept as `backup/m6-local-951fe79`); no force push. PR #6 (M5) now targets `m1-cpu-isa` as set on GitHub — left as is.
 
 ## Tick log (keep the last 20 lines only)
 _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
@@ -280,3 +283,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-17  M5  CI green on e963a28; definition of done holds; PR #6 marked ready
 - 2026-11-17  M6  started milestone (draft PR #7, base `m5-apu`)
 - 2026-11-17  M6  Declarative renderer (55 frames byte-exact), shifter invariant + bg scanline, T-PPU-3, T-PPU-4; 253 theorems
+- 2026-11-18  M6  background half of T-PPU-6 proved (T_PPU_6_bg); realigned local branch after the user's merges/restack of #2–#5; 256 theorems
