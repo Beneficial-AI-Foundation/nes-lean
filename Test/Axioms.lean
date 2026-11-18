@@ -308,7 +308,11 @@ def registry : List Name :=
   , `Nes.Hoare.Triple.wp_step
   , `Nes.Hoare.Triple.sound
   , `Nes.Hoare.ex_lda_sta
-  , `Nes.Hoare.ex_countdown ]
+  , `Nes.Hoare.ex_countdown
+  , `Nes.Hoare.Examples.add16_correct
+  , `Nes.Hoare.Examples.add16_footprint
+  , `Nes.Hoare.Examples.add16_cycles
+  , `Nes.Hoare.Examples.add16_frame ]
 
 /-- The standard axioms any theorem may use. -/
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
