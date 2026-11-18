@@ -8,7 +8,7 @@ Keep this file small: trim the tick log, never paste build output here.
 
 - **Current milestone:** M7
 - **Current branch:** `m7-hoare`
-- **Next action:** M7: `Hoare/Logic.lean` (triples over `Cpu.Isa`, memory separation, soundness); then rules; then the verified routines (one agent each).
+- **Next action:** M7 batch: verified 16-bit add ∥ `memcpy` ∥ 8×8→16 multiply ∥ a routine lifted from an open-source homebrew game (one agent each, separate files under `Nes/Hoare/Examples/`).
 - **Blocked:** no
 
 ## Milestones → stacked PRs
@@ -131,8 +131,8 @@ Parallel tracks: {Declarative renderer → shifter invariant → background half
 
 ### M7 — Verified 6502 programs (Phase 10)
 Parallel tracks: Logic → Rules (sequential); then the four verified routines, one agent each.
-- [ ] `Hoare/Logic.lean`: triples over `Cpu.Isa`, memory separation predicate, soundness
-- [ ] Rules: sequencing, consequence, branch, loop (fuel), JSR/RTS frame rule
+- [x] `Hoare/Logic.lean`: triples over `Cpu.Isa`, memory separation predicate, soundness
+- [x] Rules: sequencing, consequence, branch, loop (fuel), JSR/RTS frame rule
 - [ ] Verified routines: 16-bit add, `memcpy`, 8×8→16 multiply
 - [ ] One routine lifted from an open-source homebrew game
 - [ ] PR M7 ready. **Loop stops here.**
@@ -231,6 +231,7 @@ the docs, test-harness surprises.
 - 2026-11-18 [git] Before every push, `git fetch` and compare with the remote: the user may merge/restack PRs on GitHub between ticks; never force-push a rewritten remote branch — realign locally (`reset` to the remote + cherry-pick unpushed commits).
 - 2026-11-18 [lean] Parallel proof files in the same namespace must not share top-level names (`advance_wrap`, `run_add` clashed only at the `Nes.lean` import) — prefix helpers per file or make them `private`. macOS `sed -E` has no `\b`; use `perl -pi -e`.
 - 2026-11-18 [lean] A theorem statement containing `let r := run … 256 s` triggers a kernel "deep recursion" even when elaboration succeeds — inline the expression. `simp only [evalStep, …, State.sprTall]` produced ill-typed `Decidable` instances — `unfold …; dsimp only; split` instead.
+- 2026-11-18 [hoare] Logic is a shallow embedding over `Isa.step`: `Triple P entry exit Q` (total, ∃ n steps), `CTriple` (+exact cycles), `TripleM … F` (memory unchanged outside F); frame rule needs `Indep R F`. `hoare_step` = `of_step` + flatten `codeAt` + `simp` with `dec_NN` lemmas (needs literal addresses and `s.halted = false`); it leaves ADC/SBC/ROL/ROR/BIT unexpanded and flags via `mk_p_*`/`setZN_*` lemmas — ALU reasoning is the user's. No `CTriple` branch/loop rule yet. `decode 0xNN = … := rfl` hits depth limits for high opcodes — use `decide`; a macro listing all 256 `dec_` lemmas needs `maxRecDepth 8000`.
 
 ## Decisions log
 - 2026-11-17 PLAN.md §10 decisions confirmed (Batteries only, NTSC only, unofficial opcodes from M1, `Vector` memory everywhere, no commercial ROMs).
@@ -289,3 +290,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-18  M6  **T-PPU-6 CLOSED** (whole frame buffer = Declarative.frame for static frames); 262 theorems; all M6 items ticked
 - 2026-11-18  M6  CI green on 271b523; definition of done holds (T-PPU-6 closed); PR #7 marked ready
 - 2026-11-18  M7  started milestone (draft PR #10, base `m6-ppu-theorem`)
+- 2026-11-18  M7  Hoare logic (Triple/CTriple/TripleM, separation, frame) + rules (seq, conseq, branch, loop, JSR/RTS) + tactics; 274 theorems
