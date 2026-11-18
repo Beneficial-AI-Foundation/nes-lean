@@ -28,7 +28,7 @@ when the milestone's definition of done holds.
 | M4 | Playable | 5, 7, 9 | `m4-system` | `m3-ppu` | #5 | merged (into `m1-cpu-isa`; to `main` via #9) |
 | M5 | Sounds right | 6 | `m5-apu` | `m4-system` | #6 | ready for review |
 | M6 | The PPU theorem | 8 | `m6-ppu-theorem` | `m5-apu` | #7 | ready for review |
-| M7 | Verified 6502 programs | 10 | `m7-hoare` | `m6-ppu-theorem` | — | in progress |
+| M7 | Verified 6502 programs | 10 | `m7-hoare` | `m6-ppu-theorem` | #10 | in progress |
 
 Milestone definition of done (all milestones): `lake build` clean; `lake test` green;
 no `sorry` and no `native_decide` under `Nes/`; axiom check passes for every theorem in
@@ -288,4 +288,4 @@ _(`YYYY-MM-DD HH:MM  M<k>  <what happened in ≤ 1 line>`)_
 - 2026-11-18  M6  T-PPU-6 sprite side proved for lines 1–239 (T_PPU_3_ppuDot, fetch, spr, spr_pixel); line 0 + final composition left for attempt 2; 260 theorems
 - 2026-11-18  M6  **T-PPU-6 CLOSED** (whole frame buffer = Declarative.frame for static frames); 262 theorems; all M6 items ticked
 - 2026-11-18  M6  CI green on 271b523; definition of done holds (T-PPU-6 closed); PR #7 marked ready
-- 2026-11-18  M7  started milestone (branch `m7-hoare`, base `m6-ppu-theorem`)
+- 2026-11-18  M7  started milestone (draft PR #10, base `m6-ppu-theorem`)
