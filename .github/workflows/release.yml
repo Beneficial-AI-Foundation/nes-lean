@@ -1,0 +1,119 @@
+name: Release
+
+# Build the native emulator binary for each supported platform and attach it to
+# the GitHub Release. Triggered by pushing a version tag (e.g. `v0.1.0`), or
+# manually. The existing CI (ci.yml) and web player (pages.yml) are unchanged.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The headless emulator (`nes`) is pure Lean with no system deps, so it
+          # builds anywhere Lean does. The important native platforms are Linux and
+          # macOS; the browser player is shipped separately via GitHub Pages.
+          - os: ubuntu-latest
+            target: linux-x86_64
+          - os: macos-14          # Apple silicon
+            target: macos-arm64
+          - os: macos-13          # Intel
+            target: macos-x86_64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # elan + the toolchain pinned in lean-toolchain, with the .lake cache.
+      # `nes` is the headless emulator; it needs no SDL3.
+      - name: Build the nes emulator binary
+        uses: leanprover/lean-action@v1
+        with:
+          auto-config: false
+          build: true
+          build-args: "nes"
+          use-github-cache: true
+
+      # The live window `nes-play` needs SDL3 (a system dependency). Install it
+      # where it is packaged (Homebrew on macOS; apt on Linux, which only carries
+      # libsdl3-dev on newer releases). This is best-effort: if SDL3 is not
+      # available the release still ships the headless `nes` binary.
+      - name: Install SDL3 (best effort, for the optional GUI player)
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            brew install sdl3 pkg-config || true
+          else
+            sudo apt-get update || true
+            sudo apt-get install -y libsdl3-dev pkg-config || true
+          fi
+
+      - name: Build nes-play if SDL3 is available
+        shell: bash
+        run: |
+          if pkg-config --exists sdl3 2>/dev/null; then
+            echo "SDL3 found; building nes-play"
+            lake build nes-play
+            echo "HAVE_NESPLAY=1" >> "$GITHUB_ENV"
+          else
+            echo "SDL3 not available on this runner; shipping the headless nes binary only"
+          fi
+
+      - name: Package
+        shell: bash
+        run: |
+          ver="${GITHUB_REF_NAME:-dev}"
+          name="nes-lean-${ver}-${{ matrix.target }}"
+          mkdir -p "dist/${name}"
+          cp .lake/build/bin/nes "dist/${name}/"
+          if [ "${HAVE_NESPLAY:-}" = "1" ]; then
+            cp .lake/build/bin/nes-play "dist/${name}/"
+          fi
+          cp README.md LICENSE "dist/${name}/" 2>/dev/null || true
+          cat > "dist/${name}/RELEASE.txt" <<EOF
+          nes-lean ${ver} (${{ matrix.target }})
+
+          nes        headless NES emulator. Run a ROM: ./nes run <rom.nes>
+                     (PNG/PPM frames, frame hashes, WAV audio, scripted input).
+                     ./nes --help lists the options.
+          nes-play   live window (keyboard + sound), present only when this build
+                     found SDL3. It needs the SDL3 runtime library installed
+                     (brew install sdl3, or libsdl3-dev / your distro's SDL3 package).
+
+          The in-browser player is published separately to GitHub Pages.
+          EOF
+          tar -C dist -czf "${name}.tar.gz" "${name}"
+          shasum -a 256 "${name}.tar.gz" > "${name}.tar.gz.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: |
+            nes-lean-*.tar.gz
+            nes-lean-*.tar.gz.sha256
+
+  release:
+    name: publish release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Attach binaries to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/nes-lean-*.tar.gz
+            dist/nes-lean-*.tar.gz.sha256
+          generate_release_notes: true
